@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from './api.js';
 import Guru from './Guru.jsx';
 import Staff from './Staff.jsx';
+import Admin from './Admin.jsx';
 
 function Login({ onDone }) {
   const [f, setF] = useState({ username: '', password: '' });
@@ -30,6 +31,7 @@ function Login({ onDone }) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
+  const [tab, setTab] = useState('dasbor');
   useEffect(() => {
     api('/me').then(setUser).catch(() => {}).finally(() => setReady(true));
   }, []);
@@ -41,7 +43,13 @@ export default function App() {
         <h1>Halo, {user.full_name} <small>({user.role})</small></h1>
         <button onClick={() => { localStorage.removeItem('token'); setUser(null); }}>Keluar</button>
       </header>
-      {user.role === 'guru' ? <Guru /> : <Staff user={user} />}
+      {user.role === 'admin' && (
+        <nav className="tabs">
+          <button className={tab === 'dasbor' ? 'on' : ''} onClick={() => setTab('dasbor')}>Dasbor</button>
+          <button className={tab === 'pengaturan' ? 'on' : ''} onClick={() => setTab('pengaturan')}>Pengaturan</button>
+        </nav>
+      )}
+      {user.role === 'guru' ? <Guru /> : user.role === 'admin' && tab === 'pengaturan' ? <Admin /> : <Staff user={user} />}
     </main>
   );
 }

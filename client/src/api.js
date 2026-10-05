@@ -29,7 +29,22 @@ export function deviceId() {
 const QKEY = 'pending_attendance';
 export const pending = () => JSON.parse(localStorage.getItem(QKEY) || '[]');
 const savePending = (q) => localStorage.setItem(QKEY, JSON.stringify(q));
-export const enqueue = (item) => savePending([...pending(), item]);
+// Mengembalikan false bila penyimpanan lokal penuh (selfie cukup besar)
+export function enqueue(item) {
+  try {
+    savePending([...pending(), item]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Ambil gambar berotorisasi sebagai object URL (untuk <img>)
+export async function fetchImageUrl(path) {
+  const res = await fetch('/api' + path, { headers: { authorization: `Bearer ${localStorage.getItem('token')}` } });
+  if (!res.ok) throw new Error('Gambar tidak tersedia');
+  return URL.createObjectURL(await res.blob());
+}
 
 export async function flushPending() {
   const left = [];

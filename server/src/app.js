@@ -17,7 +17,8 @@ const parse = (schema, body, res) => {
 
 export function createApp(db) {
   const app = express();
-  app.use(helmet(), cors(), express.json({ limit: '1mb' }));
+  // blob: dibutuhkan agar foto selfie (diambil dengan header Authorization) bisa tampil di <img>
+  app.use(helmet({ contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:', 'blob:'] } } }), cors(), express.json({ limit: '1mb' }));
   const auth = requireAuth(db);
 
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
@@ -50,14 +51,15 @@ export function createApp(db) {
       work_end: z.string().regex(/^\d\d:\d\d$/).default('14:00'),
       late_tolerance_min: z.number().int().min(0).max(120).default(10),
       ai_enabled: z.boolean().default(false),
+      require_selfie: z.boolean().default(false),
     }), req.body, res);
     if (!d) return;
-    db.prepare(`INSERT INTO school (id,name,address,kop_lines,lat,lng,geofence_radius_m,work_start,work_end,late_tolerance_min,ai_enabled)
-      VALUES (1,@name,@address,@kop,@lat,@lng,@geofence_radius_m,@work_start,@work_end,@late_tolerance_min,@ai)
+    db.prepare(`INSERT INTO school (id,name,address,kop_lines,lat,lng,geofence_radius_m,work_start,work_end,late_tolerance_min,ai_enabled,require_selfie)
+      VALUES (1,@name,@address,@kop,@lat,@lng,@geofence_radius_m,@work_start,@work_end,@late_tolerance_min,@ai,@selfie)
       ON CONFLICT(id) DO UPDATE SET name=@name,address=@address,kop_lines=@kop,lat=@lat,lng=@lng,
         geofence_radius_m=@geofence_radius_m,work_start=@work_start,work_end=@work_end,
-        late_tolerance_min=@late_tolerance_min,ai_enabled=@ai`)
-      .run({ ...d, kop: JSON.stringify(d.kop_lines), ai: d.ai_enabled ? 1 : 0 });
+        late_tolerance_min=@late_tolerance_min,ai_enabled=@ai,require_selfie=@selfie`)
+      .run({ ...d, kop: JSON.stringify(d.kop_lines), ai: d.ai_enabled ? 1 : 0, selfie: d.require_selfie ? 1 : 0 });
     res.json(db.prepare('SELECT * FROM school WHERE id=1').get());
   });
 

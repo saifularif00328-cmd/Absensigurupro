@@ -12,3 +12,14 @@ button { background: #2563eb; color: #fff; border: 0; cursor: pointer; }
 .grid { display: grid; gap: 8px; }
 select { padding: 10px; font-size: 16px; border-radius: 8px; border: 1px solid #ccd; }
 .warn { color: #b45309; } .msg { color: #1d4ed8; }
+.modal { position: fixed; inset: 0; background: #000d; z-index: 10; display: grid; place-content: center; gap: 12px; padding: 16px; color: #fff; text-align: center; }
+.preview { width: min(90vw, 420px); border-radius: 12px; background: #000; }
+.mirror { transform: scaleX(-1); }
+button.secondary { background: #64748b; }
+button:disabled { opacity: .5; }
+.tabs { display: flex; gap: 8px; } .tabs button.on { background: #1e40af; }
+.thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; vertical-align: middle; }
+.flag { color: #b45309; font-weight: 600; }
+table { width: 100%; border-collapse: collapse; } td, th { padding: 6px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+.inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+label.chk { display: flex; gap: 8px; align-items: center; }

@@ -1,4 +1,8 @@
 import { Router } from 'express';
+import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import ExcelJS from 'exceljs';
 import { requireRole } from './auth.js';
@@ -6,6 +10,26 @@ import { currentQr, verifyQr } from './qr.js';
 import { localParts, toMinutes, haversineM, dateRange, isWeekend } from './timeutil.js';
 
 const MAX_OFFLINE_AGE_MS = 24 * 3600 * 1000;
+const MAX_ACCURACY_M = 150;          // GPS lebih buruk dari ini ditolak
+const MAX_SELFIE_BYTES = 300 * 1024;
+const MAX_SPEED_KMH = 200;           // lebih cepat dari ini antar-absen GPS => ditandai
+const selfieDir = () => resolve(process.env.SELFIE_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'selfies'));
+
+// Terima data URL JPEG; kembalikan Buffer atau null bila tidak valid
+function decodeSelfie(dataUrl) {
+  const m = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl ?? '');
+  if (!m) return null;
+  const buf = Buffer.from(m[1], 'base64');
+  if (buf.length < 100 || buf.length > MAX_SELFIE_BYTES) return null;
+  return buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff ? buf : null;
+}
+
+// Jangan bocorkan path file ke klien
+const pub = (row) => {
+  if (!row) return row;
+  const { selfie_path, flags, ...rest } = row;
+  return { ...rest, has_selfie: !!selfie_path, flags: JSON.parse(flags || '[]') };
+};
 const fail = (res, code, error, extra = {}) => res.status(code).json({ error, ...extra });
 const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const month = z.string().regex(/^\d{4}-\d{2}$/);
@@ -26,6 +50,8 @@ export function attendanceRoutes(db, auth) {
       qr_token: z.string().optional(),
       device_id: z.string().min(8).max(100),
       mock_location: z.boolean().optional(),
+      accuracy: z.number().min(0).optional(),
+      selfie: z.string().max(500_000).optional(),
       client_time: z.string().datetime().optional(),
     }).safeParse(req.body);
     if (!d.success) return fail(res, 400, 'Data tidak valid');
@@ -46,6 +72,7 @@ export function attendanceRoutes(db, auth) {
     if (!u.device_id) db.prepare('UPDATE users SET device_id=? WHERE id=?').run(b.device_id, req.user.id);
     else if (u.device_id !== b.device_id) return fail(res, 403, 'Perangkat tidak terdaftar. Minta admin mengatur ulang perangkat Anda.');
 
+    const flags = [];
     if (b.mock_location) return fail(res, 403, 'Lokasi palsu terdeteksi');
     if (b.method === 'qr') {
       // QR dinilai pada waktu absen sebenarnya (offline tidak boleh memakai QR lama)
@@ -54,22 +81,48 @@ export function attendanceRoutes(db, auth) {
     } else {
       if (b.lat == null || b.lng == null) return fail(res, 400, 'Lokasi diperlukan');
       if (s.lat == null || s.lng == null) return fail(res, 400, 'Lokasi sekolah belum diatur oleh admin');
+      if (b.accuracy != null && b.accuracy > MAX_ACCURACY_M) {
+        return fail(res, 400, `Sinyal GPS lemah (akurasi ${Math.round(b.accuracy)} m). Coba lagi di area terbuka.`);
+      }
       const dist = Math.round(haversineM(b.lat, b.lng, s.lat, s.lng));
       if (dist > s.geofence_radius_m) {
         return fail(res, 403, `Anda di luar area sekolah (${dist} m, batas ${s.geofence_radius_m} m)`, { distance_m: dist });
       }
+      // Heuristik lokasi palsu: hanya memberi tanda untuk ditinjau, tidak menolak
+      if (b.accuracy != null && b.accuracy < 1) flags.push('akurasi_mencurigakan');
+      const prev = db.prepare(`SELECT lat,lng,check_in FROM attendance WHERE user_id=? AND lat IS NOT NULL AND check_in < ?
+        ORDER BY check_in DESC LIMIT 1`).get(req.user.id, when.toISOString());
+      if (prev) {
+        const km = haversineM(prev.lat, prev.lng, b.lat, b.lng) / 1000;
+        const hours = (when - new Date(prev.check_in)) / 3600_000;
+        if (km > 1 && km / Math.max(hours, 1 / 60) > MAX_SPEED_KMH) flags.push('lokasi_loncat');
+      }
+    }
+
+    let selfieBuf = null;
+    if (b.selfie) {
+      selfieBuf = decodeSelfie(b.selfie);
+      if (!selfieBuf) return fail(res, 400, 'Foto selfie tidak valid (JPEG, maks 300 KB)');
+    } else if (s.require_selfie) {
+      return fail(res, 400, 'Selfie wajib untuk absen');
     }
 
     const { date, time } = localParts(when);
     const status = toMinutes(time) > toMinutes(s.work_start) + s.late_tolerance_min ? 'terlambat' : 'hadir';
     const existing = db.prepare('SELECT * FROM attendance WHERE user_id=? AND date=?').get(req.user.id, date);
-    if (existing?.check_in) return fail(res, 409, 'Sudah check-in hari ini', { attendance: existing });
+    if (existing?.check_in) return fail(res, 409, 'Sudah check-in hari ini', { attendance: pub(existing) });
     if (existing) { // baris dari izin yang disetujui: check-in tidak menimpa
       return fail(res, 409, `Hari ini tercatat ${existing.status}`);
     }
-    db.prepare(`INSERT INTO attendance (user_id,date,check_in,method,lat,lng,status,late_synced)
-      VALUES (?,?,?,?,?,?,?,?)`).run(req.user.id, date, when.toISOString(), b.method, b.lat ?? null, b.lng ?? null, status, lateSynced);
-    res.status(201).json(db.prepare('SELECT * FROM attendance WHERE user_id=? AND date=?').get(req.user.id, date));
+    let selfiePath = null;
+    if (selfieBuf) {
+      mkdirSync(selfieDir(), { recursive: true });
+      selfiePath = `${randomBytes(12).toString('hex')}.jpg`;
+      writeFileSync(join(selfieDir(), selfiePath), selfieBuf);
+    }
+    db.prepare(`INSERT INTO attendance (user_id,date,check_in,method,lat,lng,selfie_path,status,late_synced,flags)
+      VALUES (?,?,?,?,?,?,?,?,?,?)`).run(req.user.id, date, when.toISOString(), b.method, b.lat ?? null, b.lng ?? null, selfiePath, status, lateSynced, JSON.stringify(flags));
+    res.status(201).json(pub(db.prepare('SELECT * FROM attendance WHERE user_id=? AND date=?').get(req.user.id, date)));
   });
 
   r.post('/attendance/check-out', auth, requireRole('guru'), (req, res) => {
@@ -87,12 +140,12 @@ export function attendanceRoutes(db, auth) {
     if (row.check_out) return fail(res, 409, 'Sudah check-out');
     if (when < new Date(row.check_in)) return fail(res, 400, 'Check-out tidak boleh sebelum check-in');
     db.prepare('UPDATE attendance SET check_out=? WHERE id=?').run(when.toISOString(), row.id);
-    res.json(db.prepare('SELECT * FROM attendance WHERE id=?').get(row.id));
+    res.json(pub(db.prepare('SELECT * FROM attendance WHERE id=?').get(row.id)));
   });
 
   r.get('/attendance/today', auth, (req, res) => {
     const { date } = localParts();
-    res.json({ date, attendance: db.prepare('SELECT * FROM attendance WHERE user_id=? AND date=?').get(req.user.id, date) ?? null });
+    res.json({ date, attendance: pub(db.prepare('SELECT * FROM attendance WHERE user_id=? AND date=?').get(req.user.id, date)) ?? null });
   });
 
   // Riwayat: guru melihat miliknya; admin/kepsek bisa memfilter ?user_id=
@@ -104,7 +157,18 @@ export function attendanceRoutes(db, auth) {
     const m = q.data.month ?? localParts().date.slice(0, 7);
     const rows = db.prepare(`SELECT a.*, u.full_name FROM attendance a JOIN users u ON u.id=a.user_id
       WHERE a.date LIKE ? || '-%' AND (? IS NULL OR a.user_id=?) ORDER BY a.date, u.full_name`).all(m, uid ?? null, uid ?? null);
-    res.json(rows);
+    res.json(rows.map(pub));
+  });
+
+  // Foto selfie: hanya pemilik, admin, kepsek
+  r.get('/attendance/:id/selfie', auth, (req, res) => {
+    const row = db.prepare('SELECT user_id,selfie_path FROM attendance WHERE id=?').get(req.params.id);
+    const allowed = row && (row.user_id === req.user.id || ['admin', 'kepsek'].includes(req.user.role));
+    if (!allowed || !row.selfie_path) return fail(res, 404, 'Foto tidak ditemukan');
+    const file = join(selfieDir(), row.selfie_path);
+    if (!existsSync(file)) return fail(res, 404, 'Foto tidak ditemukan');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.type('image/jpeg').sendFile(file);
   });
 
   // Izin / sakit / cuti / dinas
@@ -153,6 +217,12 @@ export function attendanceRoutes(db, auth) {
     res.status(201).json(d.data);
   });
 
+  r.delete('/holidays/:date', auth, requireRole('admin'), (req, res) => {
+    if (!ymd.safeParse(req.params.date).success) return fail(res, 400, 'Tanggal tidak valid');
+    const info = db.prepare('DELETE FROM holidays WHERE date=?').run(req.params.date);
+    info.changes ? res.json({ ok: true }) : fail(res, 404, 'Hari libur tidak ditemukan');
+  });
+
   // Reset perangkat guru (ganti HP)
   r.post('/users/:id/reset-device', auth, requireRole('admin'), (req, res) => {
     const info = db.prepare('UPDATE users SET device_id=NULL WHERE id=?').run(req.params.id);
@@ -162,15 +232,21 @@ export function attendanceRoutes(db, auth) {
   // Dasbor kepala sekolah / admin
   r.get('/dashboard/today', auth, staff, (_req, res) => {
     const { date, time } = localParts();
+    const holiday = db.prepare('SELECT name FROM holidays WHERE date=?').get(date)?.name ?? null;
+    const weekend = isWeekend(date);
     const teachers = db.prepare("SELECT id,full_name FROM users WHERE role='guru' AND active=1 ORDER BY full_name").all();
     const rows = new Map(db.prepare('SELECT * FROM attendance WHERE date=?').all(date).map((a) => [a.user_id, a]));
     const counts = { hadir: 0, terlambat: 0, izin: 0, sakit: 0, cuti: 0, dinas: 0, alpa: 0 };
-    const belum = [];
+    const belum = [], entries = [];
     for (const t of teachers) {
       const a = rows.get(t.id);
-      if (a) counts[a.status]++; else belum.push(t);
+      if (a) {
+        counts[a.status]++;
+        const p = pub(a);
+        entries.push({ id: a.id, user_id: t.id, full_name: t.full_name, status: a.status, check_in: a.check_in, check_out: a.check_out, has_selfie: p.has_selfie, flags: p.flags });
+      } else if (!holiday && !weekend) belum.push(t);
     }
-    res.json({ date, time, total_guru: teachers.length, counts, belum_absen: belum });
+    res.json({ date, time, holiday, weekend, total_guru: teachers.length, counts, belum_absen: belum, entries });
   });
 
   // Rekap bulanan per guru (JSON) dan Excel

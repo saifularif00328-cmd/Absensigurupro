@@ -1,8 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { api, download } from './api.js';
+import { api, download, fetchImageUrl } from './api.js';
 
 const thisMonth = () => new Date().toISOString().slice(0, 7);
+
+function Selfie({ id }) {
+  const [src, setSrc] = useState('');
+  useEffect(() => {
+    let url = '';
+    fetchImageUrl(`/attendance/${id}/selfie`).then((u) => { url = u; setSrc(u); }).catch(() => {});
+    return () => url && URL.revokeObjectURL(url);
+  }, [id]);
+  return src ? <img className="thumb" src={src} alt="selfie" /> : null;
+}
+
+const FLAG_TEXT = { akurasi_mencurigakan: 'akurasi GPS mencurigakan', lokasi_loncat: 'lokasi berpindah tak wajar' };
+const hhmm = (iso) => (iso ? new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-');
 
 function QrPanel() {
   const [img, setImg] = useState('');
@@ -41,7 +54,23 @@ export default function Staff({ user }) {
         {dash && (
           <>
             <p>{Object.entries(dash.counts).map(([k, v]) => `${k}: ${v}`).join(' · ')} · belum absen: {dash.belum_absen.length} / {dash.total_guru}</p>
+            {(dash.holiday || dash.weekend) && <p className="msg">{dash.holiday ? `Hari libur: ${dash.holiday}` : 'Akhir pekan'} — tidak ada kewajiban absen.</p>}
             {dash.belum_absen.length > 0 && <p>Belum absen: {dash.belum_absen.map((g) => g.full_name).join(', ')}</p>}
+            {dash.entries.length > 0 && (
+              <table>
+                <tbody>
+                  {dash.entries.map((e) => (
+                    <tr key={e.id}>
+                      <td>{e.has_selfie && <Selfie id={e.id} />}</td>
+                      <td>{e.full_name}</td>
+                      <td>{e.status}</td>
+                      <td>{hhmm(e.check_in)}–{hhmm(e.check_out)}</td>
+                      <td>{e.flags.length > 0 && <span className="flag" title={e.flags.map((x) => FLAG_TEXT[x] ?? x).join(', ')}>⚠ {e.flags.map((x) => FLAG_TEXT[x] ?? x).join(', ')}</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </>
         )}
       </section>
