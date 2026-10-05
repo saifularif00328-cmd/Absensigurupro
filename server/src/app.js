@@ -5,6 +5,10 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { signToken, requireAuth, requireRole } from './auth.js';
 import { attendanceRoutes } from './attendance.js';
+import { academicRoutes } from './academic.js';
+import { examRoutes } from './exams.js';
+import { studentExamRoutes } from './studentExam.js';
+import { reportRoutes } from './reports.js';
 
 const parse = (schema, body, res) => {
   const r = schema.safeParse(body);
@@ -52,14 +56,15 @@ export function createApp(db) {
       late_tolerance_min: z.number().int().min(0).max(120).default(10),
       ai_enabled: z.boolean().default(false),
       require_selfie: z.boolean().default(false),
+      current_term: z.string().max(40).default(''),
     }), req.body, res);
     if (!d) return;
-    db.prepare(`INSERT INTO school (id,name,address,kop_lines,lat,lng,geofence_radius_m,work_start,work_end,late_tolerance_min,ai_enabled,require_selfie)
-      VALUES (1,@name,@address,@kop,@lat,@lng,@geofence_radius_m,@work_start,@work_end,@late_tolerance_min,@ai,@selfie)
+    db.prepare(`INSERT INTO school (id,name,address,kop_lines,lat,lng,geofence_radius_m,work_start,work_end,late_tolerance_min,ai_enabled,require_selfie,current_term)
+      VALUES (1,@name,@address,@kop,@lat,@lng,@geofence_radius_m,@work_start,@work_end,@late_tolerance_min,@ai,@selfie,@term)
       ON CONFLICT(id) DO UPDATE SET name=@name,address=@address,kop_lines=@kop,lat=@lat,lng=@lng,
         geofence_radius_m=@geofence_radius_m,work_start=@work_start,work_end=@work_end,
-        late_tolerance_min=@late_tolerance_min,ai_enabled=@ai,require_selfie=@selfie`)
-      .run({ ...d, kop: JSON.stringify(d.kop_lines), ai: d.ai_enabled ? 1 : 0, selfie: d.require_selfie ? 1 : 0 });
+        late_tolerance_min=@late_tolerance_min,ai_enabled=@ai,require_selfie=@selfie,current_term=@term`)
+      .run({ ...d, kop: JSON.stringify(d.kop_lines), ai: d.ai_enabled ? 1 : 0, selfie: d.require_selfie ? 1 : 0, term: d.current_term });
     res.json(db.prepare('SELECT * FROM school WHERE id=1').get());
   });
 
@@ -85,6 +90,10 @@ export function createApp(db) {
   });
 
   app.use('/api', attendanceRoutes(db, auth));
+  app.use('/api', academicRoutes(db, auth));
+  app.use('/api', examRoutes(db, auth));
+  app.use('/api', studentExamRoutes(db));
+  app.use('/api', reportRoutes(db, auth));
 
   app.use((err, _req, res, _next) => {
     console.error(err);
