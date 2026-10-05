@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { signToken, requireAuth, requireRole } from './auth.js';
+import { attendanceRoutes } from './attendance.js';
 
 const parse = (schema, body, res) => {
   const r = schema.safeParse(body);
@@ -80,6 +81,8 @@ export function createApp(db) {
       throw e;
     }
   });
+
+  app.use('/api', attendanceRoutes(db, auth));
 
   app.use((err, _req, res, _next) => {
     console.error(err);

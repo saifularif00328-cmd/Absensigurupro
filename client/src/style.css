@@ -3,3 +3,12 @@ body { font-family: system-ui, sans-serif; background: #f4f6f8; margin: 0; }
 input, button { padding: 10px; font-size: 16px; border-radius: 8px; border: 1px solid #ccd; }
 button { background: #2563eb; color: #fff; border: 0; cursor: pointer; }
 .err { color: #b91c1c; margin: 0; }
+.page { max-width: 720px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+.page header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.page h1 { font-size: 20px; margin: 0; }
+.panel { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px #0001; display: grid; gap: 10px; }
+.panel h2 { font-size: 16px; margin: 0; }
+.row { display: flex; gap: 8px; } .row input { flex: 1; min-width: 0; }
+.grid { display: grid; gap: 8px; }
+select { padding: 10px; font-size: 16px; border-radius: 8px; border: 1px solid #ccd; }
+.warn { color: #b45309; } .msg { color: #1d4ed8; }

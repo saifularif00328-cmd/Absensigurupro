@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
+import Guru from './Guru.jsx';
+import Staff from './Staff.jsx';
 
 function Login({ onDone }) {
   const [f, setF] = useState({ username: '', password: '' });
@@ -34,10 +36,12 @@ export default function App() {
   if (!ready) return null;
   if (!user) return <Login onDone={setUser} />;
   return (
-    <main className="card">
-      <h1>Halo, {user.full_name}</h1>
-      <p>Peran: {user.role}</p>
-      <button onClick={() => { localStorage.removeItem('token'); setUser(null); }}>Keluar</button>
+    <main className="page">
+      <header>
+        <h1>Halo, {user.full_name} <small>({user.role})</small></h1>
+        <button onClick={() => { localStorage.removeItem('token'); setUser(null); }}>Keluar</button>
+      </header>
+      {user.role === 'guru' ? <Guru /> : <Staff user={user} />}
     </main>
   );
 }

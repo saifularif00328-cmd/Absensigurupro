@@ -16,5 +16,9 @@ npm test                   # tes server
 Env: `JWT_SECRET` (wajib di production), `DB_FILE`, `PORT`, `ADMIN_PASSWORD`.
 
 ## Status
-Fondasi: skema database lengkap (`server/src/schema.sql`), login JWT, peran admin/kepsek/guru, profil sekolah, manajemen pengguna.
-Berikutnya: Fase 1 absensi guru.
+- Fondasi: skema database lengkap (`server/src/schema.sql`), login JWT, peran admin/kepsek/guru, profil sekolah, manajemen pengguna.
+- **Fase 1 (absensi guru) selesai:** check-in/out via GPS (geofence) atau QR dinamis (berganti tiap menit), 1 perangkat per guru (admin bisa reset), antrean offline + sinkron (maks 24 jam, ditandai `late_synced`), izin/sakit/cuti/dinas dengan persetujuan (mengisi absensi hari kerja, melewati akhir pekan & hari libur), dasbor kepala sekolah, rekap bulanan + ekspor Excel.
+- Catatan: absen selfie, deteksi lokasi palsu di level OS (butuh APK), dan scan QR via kamera belum ada; kode QR saat ini diketik/ditempel.
+- Berikutnya: Fase 2 (bank soal, ujian, dasbor real-time, koreksi -> rapor, cetak Word).
+
+Server juga menyajikan hasil `npm run build` klien (satu proses untuk produksi). Zona waktu: `SCHOOL_TZ` (default Asia/Jakarta).
