@@ -7,7 +7,7 @@
     "dev": "node scripts/copy-models.mjs && vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test test/liveness.test.js",
+    "test": "node --test test/liveness.test.js test/safeMode.test.js",
     "prebuild": "node scripts/copy-models.mjs"
   },
   "devDependencies": {

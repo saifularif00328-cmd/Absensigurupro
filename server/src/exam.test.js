@@ -312,3 +312,15 @@ test('cetak Word: paket A/B, kunci, per siswa, dan hak akses', async () => {
   assert.equal(r.status, 200);
   s.close();
 });
+
+test('pelanggaran dari aplikasi Ujian Aman (keluar aplikasi, split screen, penyematan lepas) dicatat', async () => {
+  const s = await setup();
+  const { exam } = await makeExam(s, { max_violations: 5 });
+  const tok = (await join(s, exam, '1001')).json.token;
+  for (const kind of ['keluar_aplikasi', 'split_screen', 'kiosk_lepas']) {
+    const r = await s.call('/api/ujian/violation', { method: 'POST', token: tok, body: { kind } });
+    assert.equal(r.status, 200, kind);
+  }
+  assert.deepEqual(s.db.prepare('SELECT kind FROM violations ORDER BY id').all().map((x) => x.kind), ['keluar_aplikasi', 'split_screen', 'kiosk_lepas']);
+  s.close();
+});

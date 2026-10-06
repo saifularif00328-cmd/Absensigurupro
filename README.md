@@ -16,6 +16,7 @@ Untuk dipakai sungguhan (HTTPS, layanan, cadangan): lihat `docs/PANDUAN-HOSTING.
 
 ## Dokumentasi
 - [`docs/PANDUAN-ADMIN.md`](docs/PANDUAN-ADMIN.md) — urutan setup sampai guru bisa absen.
+- [`docs/PANDUAN-APK.md`](docs/PANDUAN-APK.md) — aplikasi Android "Ujian Aman" (kiosk ujian, anti split-screen, deteksi lokasi palsu).
 - [`docs/PANDUAN-HOSTING.md`](docs/PANDUAN-HOSTING.md) — memasang online dengan HTTPS (wajib untuk kamera & GPS di HP).
 
 ## Status
@@ -23,15 +24,16 @@ Untuk dipakai sungguhan (HTTPS, layanan, cadangan): lihat `docs/PANDUAN-HOSTING.
 - **Impor Excel (.xlsx):** guru (password awal acak + lembar kredensial yang bisa dicetak/diunduh) dan siswa; template dapat diunduh; error dilaporkan per baris.
 - **Absensi guru dengan wajah:** guru mendaftarkan wajah sekali (3 foto, konsisten), lalu tiap absen = lokasi di area sekolah + selfie dengan **tantangan kedip/menoleh** + pencocokan wajah otomatis. Foto dan jarak kecocokan disimpan; hasil meragukan ditandai. Batas kecocokan diatur admin (bawaan 0,55). Offline: absen disimpan di HP lalu disinkron (maks. 24 jam), keputusan wajah tetap di server. QR sudah dihapus.
 - **Ujian:** bank soal manual, ujian bertoken dengan anti-curang web, dasbor real-time (SSE), koreksi otomatis + uraian manual, nilai otomatis ke rapor, cetak soal ke Word, rapor/ekspor Excel.
+- **Aplikasi Android "Ujian Aman" (Fase 3):** WebView terkunci ke server sekolah, penyematan layar saat ujian, anti split-screen/screenshot, pelanggaran native dicatat, lokasi dengan deteksi *mock provider*. APK dibangun oleh GitHub Actions (`android/`). Belum diuji di perangkat fisik — lihat daftar periksa di `docs/PANDUAN-APK.md`.
 - **Tampilan "Aurora Glass":** gelap, kartu kaca, tombol 3D, dock menu di HP; font/ikon dibundel (jalan tanpa internet); lolos pemeriksaan aksesibilitas otomatis (axe, WCAG A/AA).
 
 ### Batasan jujur
 - Pencocokan wajah memakai `@vladmandic/face-api` (deskriptor 128-d) yang berjalan **di HP guru**; server menilai jarak dari deskriptor yang dikirim klien dan menyimpan fotonya. Bukan biometrik tingkat bank: orang yang sangat mirip dapat lolos pada batas longgar, dan klien yang dimodifikasi sengaja dapat memalsukan deskriptor. Pertahanan berlapis: lokasi + satu perangkat per guru + tantangan liveness + foto tersimpan + tanda untuk ditinjau.
-- Web tidak bisa memblokir notifikasi/split-screen saat ujian siswa, dan tidak bisa mendeteksi lokasi palsu tingkat OS; itu butuh APK kiosk (Fase 3).
+- Browser biasa tidak bisa memblokir notifikasi/split-screen saat ujian siswa atau mendeteksi lokasi palsu; gunakan aplikasi Android (`docs/PANDUAN-APK.md`). Penyematan layar bisa dilepas pengguna tanpa Device Owner (dideteksi dan dicatat).
 - Model wajah (±7 MB) diunduh sekali lalu di-cache; di-prefetch saat guru membuka halaman absensi agar bisa dipakai offline berikutnya.
 
 ## Variabel lingkungan
-`JWT_SECRET` (wajib di production), `DB_FILE`, `SELFIE_DIR`, `PORT`, `SCHOOL_TZ` (bawaan Asia/Jakarta), `TRUST_PROXY` (mis. `1` di belakang proxy), `ADMIN_PASSWORD` (saat seed).
+`JWT_SECRET` (wajib di production), `DB_FILE`, `SELFIE_DIR`, `APK_DIR` (lokasi `ujian-aman.apk`), `PORT`, `SCHOOL_TZ` (bawaan Asia/Jakarta), `TRUST_PROXY` (mis. `1` di belakang proxy), `ADMIN_PASSWORD` (saat seed).
 
 ## Berikutnya
-Fase 3 (APK kiosk: anti split-screen, blokir notifikasi, deteksi mock location), Fase 4 (pembuat soal AI opsional, ekspor Google Form).
+Fase 4 (pembuat soal AI opsional, ekspor Google Form); kiosk penuh dengan Device Owner.

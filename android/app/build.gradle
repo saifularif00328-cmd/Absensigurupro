@@ -1,0 +1,47 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'id.sch.ujianaman'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'id.sch.ujianaman'
+        minSdk 24          // 24 = layar terbagi (multi-window) bisa dimatikan lewat resizeableActivity
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    // Penandatanganan: secrets CI (KEYSTORE_*) bila ada; jika tidak, keystore sideload bawaan repo
+    // (BUKAN rahasia: hanya agar tanda tangan APK konsisten antar build sehingga bisa diperbarui di atas yang lama).
+    signingConfigs {
+        release {
+            storeFile file(System.getenv('KEYSTORE_FILE') ?: 'sekolah-ujian.keystore')
+            storePassword System.getenv('KEYSTORE_PASSWORD') ?: 'ujianaman'
+            keyAlias System.getenv('KEY_ALIAS') ?: 'sekolah'
+            keyPassword System.getenv('KEY_PASSWORD') ?: 'ujianaman'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+    }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+}

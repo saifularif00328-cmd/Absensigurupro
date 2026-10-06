@@ -13,6 +13,7 @@ import { reportRoutes } from './reports.js';
 import { accountRoutes, createLoginLimiter } from './accounts.js';
 import { faceRoutes } from './face.js';
 import { importRoutes } from './importer.js';
+import { appRoutes } from './appDownload.js';
 
 const parse = (schema, body, res) => {
   const r = schema.safeParse(body);
@@ -105,6 +106,7 @@ export function createApp(db) {
     }
   });
 
+  app.use(appRoutes());
   app.use('/api', accountRoutes(db, auth));
   app.use('/api', faceRoutes(db, auth));
   app.use('/api', importRoutes(db, auth));

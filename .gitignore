@@ -6,3 +6,8 @@ dist
 .env
 server/selfies
 client/public/models
+android/.gradle
+android/build
+android/app/build
+android/local.properties
+server/downloads/*.apk

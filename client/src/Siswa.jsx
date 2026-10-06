@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, LogIn, Send, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { api } from './api.js';
 import Logo from './ui/Logo.jsx';
+import { enterExam, exitExam, inSafeApp, onNativeEvent } from './safeMode.js';
 
 const SKEY = 'siswa_token';
 const RING = 2 * Math.PI * 22;
@@ -28,7 +29,8 @@ function JoinForm({ onJoined }) {
       <input aria-label="Token ujian" placeholder="Token ujian" value={f.token} onChange={(e) => setF({ ...f, token: e.target.value.toUpperCase() })} autoCapitalize="characters" />
       <input aria-label="NIS" placeholder="NIS" value={f.nis} onChange={(e) => setF({ ...f, nis: e.target.value })} inputMode="numeric" />
       <input aria-label="Kode siswa" placeholder="Kode siswa" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} autoCapitalize="characters" />
-      {err && <p className="err">{err}</p>}
+      {err && <p className="err" role="alert">{err}</p>}
+      {/Ujian Aman/.test(err) && <a className="btn secondary" href="/unduh/ujian-aman.apk">Unduh aplikasi Ujian Aman (Android)</a>}
       <button><LogIn size={18} /> Masuk</button>
       <small className="small">Token dari guru, kode siswa dari wali kelas/admin.</small>
       <a className="small" href="#/">← Kembali ke halaman guru</a>
@@ -50,7 +52,8 @@ function Exam({ token, data, onFinished }) {
   const unsent = useRef(new Map());           // question_id -> response yang belum terkirim
   const finishing = useRef(false);
   const q = data.questions[idx];
-  const fsSupported = !!document.documentElement.requestFullscreen;
+  const safeApp = inSafeApp();
+  const fsSupported = !safeApp && !!document.documentElement.requestFullscreen;
 
   const finish = useCallback((reason) => { if (!finishing.current) { finishing.current = true; onFinished(reason); } }, [onFinished]);
 
@@ -113,9 +116,11 @@ function Exam({ token, data, onFinished }) {
     const fs = () => { if (fsSupported && !document.fullscreenElement) report('keluar_fullscreen', 'Anda keluar dari layar penuh. Pelanggaran dicatat.'); };
     const block = (kind) => (e) => { e.preventDefault(); if (kind) report('salin_tempel', 'Salin/tempel dinonaktifkan selama ujian.'); };
     const leave = (e) => { e.preventDefault(); e.returnValue = ''; };
-    document.addEventListener('visibilitychange', hidden);
-    window.addEventListener('blur', blur);
-    document.addEventListener('fullscreenchange', fs);
+    if (!safeApp) {                       // di aplikasi Ujian Aman, pelanggaran dilaporkan native (hindari hitung ganda)
+      document.addEventListener('visibilitychange', hidden);
+      window.addEventListener('blur', blur);
+      document.addEventListener('fullscreenchange', fs);
+    }
     const handlers = { copy: block(true), cut: block(true), paste: block(true), contextmenu: block(false), dragstart: block(false) };
     Object.entries(handlers).forEach(([k, h]) => document.addEventListener(k, h));
     window.addEventListener('beforeunload', leave);
@@ -126,10 +131,24 @@ function Exam({ token, data, onFinished }) {
       Object.entries(handlers).forEach(([k, h]) => document.removeEventListener(k, h));
       window.removeEventListener('beforeunload', leave);
     };
-  }, [started, report, fsSupported]);
+  }, [started, report, fsSupported, safeApp]);
+
+  // Peristiwa dari aplikasi Android: keluar aplikasi, split-screen, penyematan layar terlepas
+  useEffect(() => {
+    if (!started || !safeApp) return undefined;
+    const text = {
+      keluar_aplikasi: 'Anda meninggalkan aplikasi ujian. Pelanggaran dicatat.',
+      split_screen: 'Layar terbagi (split-screen) tidak diizinkan. Pelanggaran dicatat.',
+      kiosk_lepas: 'Penyematan layar terlepas. Pelanggaran dicatat.',
+    };
+    const off = onNativeEvent((kind) => { if (text[kind]) report(kind, text[kind]); });
+    return off;
+  }, [started, safeApp, report]);
+  useEffect(() => () => exitExam(), []);           // lepas penyematan saat layar ujian ditutup (selesai/terkunci)
 
   const start = async () => {
-    try { if (fsSupported) await document.documentElement.requestFullscreen(); } catch { /* ditolak browser */ }
+    if (safeApp) enterExam();
+    else { try { if (fsSupported) await document.documentElement.requestFullscreen(); } catch { /* ditolak browser */ } }
     setStarted(true);
   };
 
@@ -146,6 +165,7 @@ function Exam({ token, data, onFinished }) {
           <li>Setiap pelanggaran dicatat guru. Batas {data.exam.max_violations}x; setelah itu ujian dikunci dan dikumpulkan otomatis.</li>
           <li>Salin dan tempel dinonaktifkan. Jawaban tersimpan otomatis.</li>
         </ul>
+        {safeApp && <p><span className="tag ok"><ShieldCheck size={14} /> Mode Aman aktif</span> <span className="small">layar akan disematkan selama ujian</span></p>}
         {violations > 0 && <p className="warn">Pelanggaran sebelumnya: {violations}</p>}
         <button onClick={start}><ShieldCheck size={18} /> Mulai / Lanjutkan</button>
       </div>

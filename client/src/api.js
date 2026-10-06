@@ -1,7 +1,9 @@
+import { safeHeaders } from './safeMode.js';
+
 export async function api(path, { method = 'GET', body, token = localStorage.getItem('token') } = {}) {
   const res = await fetch('/api' + path, {
     method,
-    headers: { 'content-type': 'application/json', ...(token && { authorization: `Bearer ${token}` }) },
+    headers: { 'content-type': 'application/json', ...safeHeaders(), ...(token && { authorization: `Bearer ${token}` }) },
     body: body && JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));

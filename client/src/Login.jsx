@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { CalendarCheck, CheckCircle2, ClipboardCheck, GraduationCap, LogIn, UserRound } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CalendarCheck, CheckCircle2, ClipboardCheck, GraduationCap, LogIn, Smartphone, UserRound } from 'lucide-react';
 import { api } from './api.js';
 import Logo from './ui/Logo.jsx';
 import { useTilt } from './ui/useTilt.js';
@@ -7,7 +7,9 @@ import { useTilt } from './ui/useTilt.js';
 export default function Login({ onDone }) {
   const [f, setF] = useState({ username: '', password: '' });
   const [err, setErr] = useState('');
+  const [apk, setApk] = useState(false);
   const tilt = useTilt(6);
+  useEffect(() => { fetch('/api/app-info').then((r) => r.json()).then((d) => setApk(!!d.apk)).catch(() => {}); }, []);
   const submit = async (e) => {
     e.preventDefault();
     try {
@@ -48,6 +50,7 @@ export default function Login({ onDone }) {
         <button><LogIn size={18} /> Masuk</button>
         <div className="divider">atau</div>
         <a className="btn secondary" href="#/ujian"><UserRound size={18} /> Saya siswa — masuk ujian</a>
+        {apk && <a className="btn secondary" href="/unduh/ujian-aman.apk"><Smartphone size={18} /> Unduh aplikasi Android (Ujian Aman)</a>}
       </form>
     </div>
   );

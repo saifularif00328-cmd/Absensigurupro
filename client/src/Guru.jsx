@@ -3,12 +3,18 @@ import { CalendarClock, CheckCircle2, Fingerprint, LogOut, MapPin, ScanFace, Sen
 import { api, deviceId, enqueue, flushPending, pending } from './api.js';
 import FaceCapture from './face/FaceCapture.jsx';
 import { prefetchFaceModels } from './face/faceEngine.js';
+import { inSafeApp, nativeLocation } from './safeMode.js';
 
-const getPosition = () =>
-  new Promise((resolve, reject) =>
+// Di aplikasi Android lokasi diambil native agar lokasi palsu (mock) bisa dideteksi; di browser memakai Geolocation API
+const getPosition = () => {
+  if (inSafeApp()) return nativeLocation().then((l) => ({ lat: l.lat, lng: l.lng, accuracy: l.accuracy, mock: l.mock }));
+  return new Promise((resolve, reject) =>
     navigator.geolocation
-      ? navigator.geolocation.getCurrentPosition(resolve, () => reject(new Error('Izin lokasi ditolak / lokasi tidak tersedia')), { enableHighAccuracy: true, timeout: 15000 })
+      ? navigator.geolocation.getCurrentPosition(
+        (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy, mock: false }),
+        () => reject(new Error('Izin lokasi ditolak / lokasi tidak tersedia')), { enableHighAccuracy: true, timeout: 15000 })
       : reject(new Error('Perangkat tidak mendukung lokasi')));
+};
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '—');
 
@@ -58,15 +64,15 @@ export default function Guru() {
     setMsg('');
     if (!face.enrolled) return setMsg('Daftarkan wajah Anda dulu (tombol di atas).');
     try {
-      const p = await getPosition();
-      setPos({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy });
+      setPos(await getPosition());
       setStep('verify');
     } catch (e) { setMsg(e.message); }
   };
 
   const submit = useCallback(async ({ selfie, descriptor }) => {
     setStep(null);
-    const body = { method: 'selfie', ...pos, selfie, descriptor, device_id: deviceId() };
+    const { lat, lng, accuracy, mock } = pos;
+    const body = { method: 'selfie', lat, lng, ...(accuracy != null && { accuracy }), ...(mock && { mock_location: true }), selfie, descriptor, device_id: deviceId() };
     try {
       setToday(await api('/attendance/check-in', { method: 'POST', body }));
       setMsg('Check-in berhasil');

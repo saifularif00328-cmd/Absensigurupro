@@ -1,0 +1,32 @@
+name: Android APK (Ujian Aman)
+
+on:
+  push:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Tes unit dan bangun APK rilis
+        working-directory: android
+        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest assembleRelease
+
+      - name: Unggah APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ujian-aman-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error

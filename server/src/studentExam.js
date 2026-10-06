@@ -109,7 +109,7 @@ export function studentExamRoutes(db) {
 
   r.post(`${base}/violation`, needSession, (req, res) => {
     if (req.sess.submitted_at) return res.json({ locked: true });
-    const d = z.object({ kind: z.enum(['pindah_tab', 'keluar_fullscreen', 'salin_tempel', 'perangkat_lain', 'lainnya']) }).safeParse(req.body);
+    const d = z.object({ kind: z.enum(['pindah_tab', 'keluar_fullscreen', 'salin_tempel', 'perangkat_lain', 'keluar_aplikasi', 'split_screen', 'kiosk_lepas', 'lainnya']) }).safeParse(req.body);
     if (!d.success) return fail(res, 400, 'Data tidak valid');
     db.prepare('INSERT INTO violations (session_id,kind) VALUES (?,?)').run(req.sess.id, d.data.kind);
     db.prepare('UPDATE exam_sessions SET violations = violations + 1 WHERE id=?').run(req.sess.id);
