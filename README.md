@@ -4,7 +4,7 @@ Webapp sekolah: absensi **guru** (GPS/QR/selfie, izin, rekap) + bank soal & ujia
 Rencana lengkap: lihat riset di `docs/` (belum ada) atau diskusi proyek.
 
 ## Stack
-Node/Express + SQLite (better-sqlite3) di `server/`, React + Vite di `client/`.
+Node/Express + SQLite (node:sqlite bawaan Node, tanpa kompilasi; butuh Node 22.13 atau lebih baru) di `server/`, React + Vite di `client/`.
 
 ## Menjalankan
 ```

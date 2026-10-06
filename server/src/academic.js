@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { requireRole } from './auth.js';
+import { isUniqueViolation } from './db.js';
 import { randomCode } from './util.js';
 
 const fail = (res, code, error, extra = {}) => res.status(code).json({ error, ...extra });
@@ -19,7 +20,7 @@ export function academicRoutes(db, auth) {
       const i = db.prepare('INSERT INTO classes (name,level,wali_user_id) VALUES (?,?,?)').run(d.data.name, d.data.level ?? null, d.data.wali_user_id ?? null);
       res.status(201).json({ id: i.lastInsertRowid });
     } catch (e) {
-      if (String(e.code).startsWith('SQLITE_CONSTRAINT')) return fail(res, 409, 'Nama kelas sudah ada');
+      if (isUniqueViolation(e)) return fail(res, 409, 'Nama kelas sudah ada');
       throw e;
     }
   });
@@ -33,7 +34,7 @@ export function academicRoutes(db, auth) {
     try {
       res.status(201).json({ id: db.prepare('INSERT INTO subjects (name) VALUES (?)').run(d.data.name).lastInsertRowid });
     } catch (e) {
-      if (String(e.code).startsWith('SQLITE_CONSTRAINT')) return fail(res, 409, 'Mapel sudah ada');
+      if (isUniqueViolation(e)) return fail(res, 409, 'Mapel sudah ada');
       throw e;
     }
   });

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
 import bcrypt from 'bcryptjs';
 
 process.env.SELFIE_DIR = mkdtempSync(join(tmpdir(), 'selfie-'));
@@ -131,7 +131,7 @@ test('admin menyimpan require_selfie lewat PUT /api/school', async () => {
 
 test('migrasi: DB lama tanpa kolom baru ditambah otomatis dan data tetap', () => {
   const file = join(mkdtempSync(join(tmpdir(), 'mig-')), 'old.db');
-  const old = new Database(file);
+  const old = new DatabaseSync(file);
   old.exec(`CREATE TABLE school (id INTEGER PRIMARY KEY CHECK (id=1), name TEXT NOT NULL, address TEXT NOT NULL DEFAULT '',
     logo_path TEXT, kop_lines TEXT NOT NULL DEFAULT '[]', lat REAL, lng REAL, geofence_radius_m INTEGER NOT NULL DEFAULT 100,
     work_start TEXT NOT NULL DEFAULT '07:00', work_end TEXT NOT NULL DEFAULT '14:00', late_tolerance_min INTEGER NOT NULL DEFAULT 10,

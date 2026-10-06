@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { signToken, requireAuth, requireRole } from './auth.js';
+import { isUniqueViolation } from './db.js';
 import { attendanceRoutes } from './attendance.js';
 import { academicRoutes } from './academic.js';
 import { examRoutes } from './exams.js';
@@ -64,7 +65,11 @@ export function createApp(db) {
       ON CONFLICT(id) DO UPDATE SET name=@name,address=@address,kop_lines=@kop,lat=@lat,lng=@lng,
         geofence_radius_m=@geofence_radius_m,work_start=@work_start,work_end=@work_end,
         late_tolerance_min=@late_tolerance_min,ai_enabled=@ai,require_selfie=@selfie,current_term=@term`)
-      .run({ ...d, kop: JSON.stringify(d.kop_lines), ai: d.ai_enabled ? 1 : 0, selfie: d.require_selfie ? 1 : 0, term: d.current_term });
+      .run({
+        name: d.name, address: d.address, kop: JSON.stringify(d.kop_lines), lat: d.lat, lng: d.lng,
+        geofence_radius_m: d.geofence_radius_m, work_start: d.work_start, work_end: d.work_end,
+        late_tolerance_min: d.late_tolerance_min, ai: d.ai_enabled ? 1 : 0, selfie: d.require_selfie ? 1 : 0, term: d.current_term,
+      });
     res.json(db.prepare('SELECT * FROM school WHERE id=1').get());
   });
 
@@ -84,7 +89,7 @@ export function createApp(db) {
         .run(d.username, bcrypt.hashSync(d.password, 10), d.full_name, d.nip ?? null, d.role, d.is_wali_kelas ? 1 : 0);
       res.status(201).json({ id: r.lastInsertRowid });
     } catch (e) {
-      if (String(e.code).startsWith('SQLITE_CONSTRAINT')) return res.status(409).json({ error: 'Username sudah dipakai' });
+      if (isUniqueViolation(e)) return res.status(409).json({ error: 'Username sudah dipakai' });
       throw e;
     }
   });
