@@ -1,5 +1,4 @@
-export async function api(path, { method = 'GET', body } = {}) {
-  const token = localStorage.getItem('token');
+export async function api(path, { method = 'GET', body, token = localStorage.getItem('token') } = {}) {
   const res = await fetch('/api' + path, {
     method,
     headers: { 'content-type': 'application/json', ...(token && { authorization: `Bearer ${token}` }) },
@@ -60,4 +59,20 @@ export async function flushPending() {
   }
   savePending(left);
   return { synced, remaining: left.length, lastError };
+}
+
+// Baca SSE lewat fetch agar header Authorization tetap dipakai. Berhenti saat signal dibatalkan.
+export async function streamEvents(path, onEvent, signal) {
+  const res = await fetch('/api' + path, { headers: { authorization: `Bearer ${localStorage.getItem('token')}` }, signal });
+  if (!res.ok) throw new Error('Tidak bisa terhubung ke pemantauan');
+  const reader = res.body.getReader(), dec = new TextDecoder();
+  let buf = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) return;
+    buf += dec.decode(value, { stream: true });
+    const parts = buf.split('\n\n');
+    buf = parts.pop();
+    for (const c of parts) if (c.startsWith('data: ')) onEvent(JSON.parse(c.slice(6)));
+  }
 }

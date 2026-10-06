@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from './api.js';
 
-const EMPTY = { name: '', address: '', lat: '', lng: '', geofence_radius_m: 100, work_start: '07:00', work_end: '14:00', late_tolerance_min: 10, require_selfie: false };
+const EMPTY = { name: '', address: '', lat: '', lng: '', geofence_radius_m: 100, work_start: '07:00', work_end: '14:00', late_tolerance_min: 10, require_selfie: false, current_term: '' };
 const num = (v) => (v === '' || v == null ? null : Number(v));
 
 function SchoolSettings({ onError }) {
@@ -28,7 +28,7 @@ function SchoolSettings({ onError }) {
         body: {
           name: f.name, address: f.address, lat: num(f.lat), lng: num(f.lng),
           geofence_radius_m: Number(f.geofence_radius_m), work_start: f.work_start, work_end: f.work_end,
-          late_tolerance_min: Number(f.late_tolerance_min), require_selfie: f.require_selfie,
+          late_tolerance_min: Number(f.late_tolerance_min), require_selfie: f.require_selfie, current_term: f.current_term,
         },
       });
       setSaved('Tersimpan');
@@ -52,6 +52,7 @@ function SchoolSettings({ onError }) {
           <label>Jam pulang <input type="time" value={f.work_end} onChange={set('work_end')} /></label>
           <label>Toleransi (menit) <input type="number" min="0" max="120" value={f.late_tolerance_min} onChange={set('late_tolerance_min')} /></label>
         </div>
+        <label>Semester berjalan <input placeholder="mis. 2026/2027 Ganjil (kosong = otomatis)" style={{ minWidth: 260 }} value={f.current_term} onChange={set('current_term')} /></label>
         <label className="chk"><input type="checkbox" checked={f.require_selfie} onChange={set('require_selfie')} /> Wajib selfie saat absen</label>
         <button>Simpan</button>
         {saved && <p className="msg">{saved}</p>}
