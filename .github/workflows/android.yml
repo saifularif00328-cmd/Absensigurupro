@@ -18,7 +18,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
+      # Runner GitHub sudah membawa Android SDK; cukup menerima lisensi agar Gradle boleh memasang platform/build-tools yang kurang
+      - name: Terima lisensi Android SDK
+        run: yes | "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager --licenses > /dev/null || true
 
       - name: Tes unit dan bangun APK rilis
         working-directory: android
