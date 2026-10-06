@@ -20,7 +20,7 @@ Semua pelanggaran (keluar aplikasi, split-screen, penyematan terlepas) dikirim k
 - Penanda "Mode Aman" ke server berupa header yang **dapat ditiru** siapa pun yang tahu caranya. Ia mencegah pembukaan ujian lewat browser biasa secara tidak sengaja, bukan pertahanan terhadap peretas. Perlindungan utama tetap kiosk + pelanggaran tercatat.
 - Hanya **Android 7.0 ke atas**. iPhone/iPad tidak didukung (gunakan Guided Access manual atau Safe Exam Browser).
 - Unduhan file (Excel/Word) dari halaman admin tidak didukung di dalam aplikasi; gunakan browser biasa untuk tugas admin.
-- Saya (pembuat kode) belum menguji aplikasi ini di perangkat fisik; yang sudah diuji: kode dikompilasi terhadap API Android 14, logika murni lolos tes JUnit, sisi web diuji dengan jembatan tiruan. **Lakukan uji perangkat nyata (daftar periksa di bawah) sebelum dipakai ujian sungguhan.**
+- **Status pengujian (jujur):** APK berhasil dibangun dan ditandatangani oleh GitHub Actions (tes unit JUnit lulus, `assembleRelease` sukses), kode juga dikompilasi terhadap API Android 14, dan sisi web diuji di browser dengan jembatan tiruan. **Belum pernah dijalankan di perangkat/emulator Android** (penyematan layar, deteksi split-screen, FLAG_SECURE, kamera/lokasi di WebView belum terbukti di HP nyata). Lakukan uji perangkat nyata (daftar periksa di bawah) sebelum dipakai ujian sungguhan.
 
 ## 1. Mendapatkan APK
 **Cara termudah — GitHub Actions** (tanpa memasang apa pun):

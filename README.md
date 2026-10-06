@@ -24,7 +24,7 @@ Untuk dipakai sungguhan (HTTPS, layanan, cadangan): lihat `docs/PANDUAN-HOSTING.
 - **Impor Excel (.xlsx):** guru (password awal acak + lembar kredensial yang bisa dicetak/diunduh) dan siswa; template dapat diunduh; error dilaporkan per baris.
 - **Absensi guru dengan wajah:** guru mendaftarkan wajah sekali (3 foto, konsisten), lalu tiap absen = lokasi di area sekolah + selfie dengan **tantangan kedip/menoleh** + pencocokan wajah otomatis. Foto dan jarak kecocokan disimpan; hasil meragukan ditandai. Batas kecocokan diatur admin (bawaan 0,55). Offline: absen disimpan di HP lalu disinkron (maks. 24 jam), keputusan wajah tetap di server. QR sudah dihapus.
 - **Ujian:** bank soal manual, ujian bertoken dengan anti-curang web, dasbor real-time (SSE), koreksi otomatis + uraian manual, nilai otomatis ke rapor, cetak soal ke Word, rapor/ekspor Excel.
-- **Aplikasi Android "Ujian Aman" (Fase 3):** WebView terkunci ke server sekolah, penyematan layar saat ujian, anti split-screen/screenshot, pelanggaran native dicatat, lokasi dengan deteksi *mock provider*. APK dibangun oleh GitHub Actions (`android/`). Belum diuji di perangkat fisik — lihat daftar periksa di `docs/PANDUAN-APK.md`.
+- **Aplikasi Android "Ujian Aman" (Fase 3):** WebView terkunci ke server sekolah, penyematan layar saat ujian, anti split-screen/screenshot, pelanggaran native dicatat, lokasi dengan deteksi *mock provider*. APK dibangun dan ditandatangani oleh GitHub Actions (`android/`, build hijau). Belum dijalankan di perangkat Android — lihat daftar periksa di `docs/PANDUAN-APK.md`.
 - **Tampilan "Aurora Glass":** gelap, kartu kaca, tombol 3D, dock menu di HP; font/ikon dibundel (jalan tanpa internet); lolos pemeriksaan aksesibilitas otomatis (axe, WCAG A/AA).
 
 ### Batasan jujur
