@@ -10,6 +10,7 @@ import Ujian from './Ujian.jsx';
 import Akademik from './Akademik.jsx';
 import Nilai from './Nilai.jsx';
 import Siswa from './Siswa.jsx';
+import ChangePassword from './ui/ChangePassword.jsx';
 
 const TABS = {
   guru: [['absensi', 'Absensi'], ['soal', 'Bank Soal'], ['ujian', 'Ujian'], ['nilai', 'Nilai']],
@@ -31,16 +32,21 @@ function StaffApp() {
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState(null);
+  const [pwOpen, setPwOpen] = useState(false);
   useEffect(() => {
     api('/me').then(setUser).catch(() => {}).finally(() => setReady(true));
   }, []);
   if (!ready) return null;
   if (!user) return <Login onDone={setUser} />;
+  const logout = () => { localStorage.removeItem('token'); setUser(null); setTab(null); setPwOpen(false); };
+  if (user.must_change_password) {
+    return <div className="login-wrap" style={{ display: 'grid', placeItems: 'center' }}><ChangePassword forced onCancel={logout} onDone={() => setUser({ ...user, must_change_password: false })} /></div>;
+  }
   const tabs = TABS[user.role];
   const cur = tab ?? tabs[0][0];
-  const logout = () => { localStorage.removeItem('token'); setUser(null); setTab(null); };
   return (
-    <Shell user={user} tabs={tabs} cur={cur} onTab={setTab} onLogout={logout}>
+    <Shell user={user} tabs={tabs} cur={cur} onTab={setTab} onLogout={logout} onChangePassword={() => setPwOpen(true)}>
+      {pwOpen && <ChangePassword onCancel={() => setPwOpen(false)} onDone={() => setPwOpen(false)} />}
       {cur === 'absensi' && <Guru />}
       {cur === 'dasbor' && <Staff user={user} />}
       {cur === 'pengaturan' && <Admin />}

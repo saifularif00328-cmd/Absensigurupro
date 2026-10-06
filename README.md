@@ -1,7 +1,6 @@
 # Absensi Guru Pro
 
-Webapp sekolah: absensi **guru** (GPS/QR/selfie, izin, rekap) + bank soal & ujian + nilai/rapor.
-Rencana lengkap: lihat riset di `docs/` (belum ada) atau diskusi proyek.
+Webapp sekolah: absensi **guru** dengan wajah + lokasi (izin, rekap Excel), impor guru/siswa dari Excel, bank soal & ujian online, nilai/rapor.
 
 ## Stack
 Node/Express + SQLite (node:sqlite bawaan Node, tanpa kompilasi; butuh Node 22.13 atau lebih baru) di `server/`, React + Vite di `client/`.
@@ -9,29 +8,30 @@ Node/Express + SQLite (node:sqlite bawaan Node, tanpa kompilasi; butuh Node 22.1
 ## Menjalankan
 ```
 npm install
-npm run seed -w server     # buat sekolah & akun admin (admin / admin12345, segera ganti)
+npm run seed -w server     # buat sekolah & akun admin (admin / admin12345; wajib diganti saat login pertama)
 npm run dev                # server :3000, klien :5173
-npm test                   # tes server
+npm test                   # tes server + klien
 ```
-Env: `JWT_SECRET` (wajib di production), `DB_FILE`, `PORT`, `ADMIN_PASSWORD`.
+Untuk dipakai sungguhan (HTTPS, layanan, cadangan): lihat `docs/PANDUAN-HOSTING.md`.
+
+## Dokumentasi
+- [`docs/PANDUAN-ADMIN.md`](docs/PANDUAN-ADMIN.md) — urutan setup sampai guru bisa absen.
+- [`docs/PANDUAN-HOSTING.md`](docs/PANDUAN-HOSTING.md) — memasang online dengan HTTPS (wajib untuk kamera & GPS di HP).
 
 ## Status
-- Fondasi: skema database lengkap (`server/src/schema.sql`), login JWT, peran admin/kepsek/guru, profil sekolah, manajemen pengguna.
-- **Fase 1 (absensi guru) selesai:** check-in/out via GPS (geofence) atau QR dinamis (berganti tiap menit), 1 perangkat per guru (admin bisa reset), antrean offline + sinkron (maks 24 jam, ditandai `late_synced`), izin/sakit/cuti/dinas dengan persetujuan (mengisi absensi hari kerja, melewati akhir pekan & hari libur), dasbor kepala sekolah, rekap bulanan + ekspor Excel.
-- **Penyempurnaan Fase 1:**
-  - Selfie: opsional atau wajib (pengaturan sekolah), JPEG maks 300 KB, disimpan di `SELFIE_DIR` (default `server/selfies/`), hanya bisa dilihat pemilik/admin/kepsek. Ini bukti visual untuk ditinjau manusia, **bukan** pengenalan wajah/liveness.
-  - Lokasi palsu: web tidak bisa mendeteksi mock location. Yang dilakukan: tolak akurasi GPS > 150 m, beri tanda ⚠ untuk akurasi tak wajar (<1 m) dan perpindahan >200 km/jam antar-absen. Deteksi sungguhan butuh APK (Fase 3, tanda `mock_location` sudah didukung server). Pertahanan utama: QR dinamis + selfie wajib.
-  - Scan QR lewat kamera (BarcodeDetector, cadangan jsQR); input tempel tetap ada.
-  - Layar Admin: pengaturan sekolah (lokasi, radius, jam, selfie), hari libur (tambah/hapus; dasbor tidak menuding guru "belum absen" saat libur/akhir pekan), daftar guru + reset perangkat.
-  - Kamera butuh **HTTPS** (atau localhost) saat dipakai di server sungguhan.
-- **Fase 2 (ujian) selesai:**
-  - Admin: kelas, mapel, bobot nilai (harian/UTS/UAS), impor siswa dari teks CSV/Excel (NIS,Nama,Kelas) dengan kode siswa otomatis.
-  - Guru: bank soal manual (pilihan ganda, benar/salah, isian singkat, uraian), buat ujian (jadwal, durasi, acak soal/pilihan, batas pelanggaran), token ujian.
-  - Siswa: buka `/#/ujian`, masuk dengan token + NIS + kode siswa. Satu soal per layar, jawaban tersimpan otomatis, timer dari jam server, satu sesi aktif per siswa.
-  - Anti-curang level web: layar penuh, deteksi pindah tab/aplikasi/split screen/keluar layar penuh, salin-tempel dan klik kanan diblokir, kunci + kumpul otomatis bila melewati batas pelanggaran. Web **tidak bisa memblokir** notifikasi/split screen; itu butuh APK kiosk (Fase 3). Opsi "Wajib aplikasi Ujian Aman" sudah ada di server (header `X-Safe-Mode: 1`) menunggu APK.
-  - Dasbor guru real-time (SSE): siapa mengerjakan, progres, pelanggaran, nilai. PG/BS/isian dikoreksi otomatis; uraian lewat antrean koreksi; nilai terbit ke rapor begitu semua uraian selesai dikoreksi.
-  - Nilai & rapor: rata-rata per jenis x bobot mapel (bobot jenis yang belum ada dibagi ulang), rekap S/I/A oleh admin/wali kelas, cetak rapor, ekspor Excel.
-  - Cetak soal ke Word (.docx): kop sekolah, isian nama/absen/tanggal, paket A/B, 1-2 kolom, kunci jawaban, satu naskah per siswa.
-- Semester berjalan diatur di Pengaturan sekolah (kolom `current_term`; kosong = dihitung dari tanggal).
-- **Tampilan "Aurora Glass":** tema gelap dengan kartu kaca, tombol 3D, kartu miring mengikuti kursor, dock menu melayang di HP. Font dan ikon dibundel (jalan tanpa internet). Hormati `prefers-reduced-motion`. Lolos pemeriksaan aksesibilitas otomatis (axe, WCAG A/AA) di 12 layar utama.
-- Berikutnya: Fase 3 (APK kiosk: anti split-screen, blokir notifikasi, deteksi mock location), Fase 4 (pembuat soal AI opsional, ekspor Google Form).
+- **Akun & akses:** login JWT; peran admin/kepsek/guru. Akun baru/hasil reset **wajib ganti password** saat login pertama (server memblokir fitur lain sampai diganti). Pembatas login (5 gagal/15 menit per username+IP). Admin: reset password, reset perangkat, reset wajah, nonaktifkan.
+- **Impor Excel (.xlsx):** guru (password awal acak + lembar kredensial yang bisa dicetak/diunduh) dan siswa; template dapat diunduh; error dilaporkan per baris.
+- **Absensi guru dengan wajah:** guru mendaftarkan wajah sekali (3 foto, konsisten), lalu tiap absen = lokasi di area sekolah + selfie dengan **tantangan kedip/menoleh** + pencocokan wajah otomatis. Foto dan jarak kecocokan disimpan; hasil meragukan ditandai. Batas kecocokan diatur admin (bawaan 0,55). Offline: absen disimpan di HP lalu disinkron (maks. 24 jam), keputusan wajah tetap di server. QR sudah dihapus.
+- **Ujian:** bank soal manual, ujian bertoken dengan anti-curang web, dasbor real-time (SSE), koreksi otomatis + uraian manual, nilai otomatis ke rapor, cetak soal ke Word, rapor/ekspor Excel.
+- **Tampilan "Aurora Glass":** gelap, kartu kaca, tombol 3D, dock menu di HP; font/ikon dibundel (jalan tanpa internet); lolos pemeriksaan aksesibilitas otomatis (axe, WCAG A/AA).
+
+### Batasan jujur
+- Pencocokan wajah memakai `@vladmandic/face-api` (deskriptor 128-d) yang berjalan **di HP guru**; server menilai jarak dari deskriptor yang dikirim klien dan menyimpan fotonya. Bukan biometrik tingkat bank: orang yang sangat mirip dapat lolos pada batas longgar, dan klien yang dimodifikasi sengaja dapat memalsukan deskriptor. Pertahanan berlapis: lokasi + satu perangkat per guru + tantangan liveness + foto tersimpan + tanda untuk ditinjau.
+- Web tidak bisa memblokir notifikasi/split-screen saat ujian siswa, dan tidak bisa mendeteksi lokasi palsu tingkat OS; itu butuh APK kiosk (Fase 3).
+- Model wajah (±7 MB) diunduh sekali lalu di-cache; di-prefetch saat guru membuka halaman absensi agar bisa dipakai offline berikutnya.
+
+## Variabel lingkungan
+`JWT_SECRET` (wajib di production), `DB_FILE`, `SELFIE_DIR`, `PORT`, `SCHOOL_TZ` (bawaan Asia/Jakarta), `TRUST_PROXY` (mis. `1` di belakang proxy), `ADMIN_PASSWORD` (saat seed).
+
+## Berikutnya
+Fase 3 (APK kiosk: anti split-screen, blokir notifikasi, deteksi mock location), Fase 4 (pembuat soal AI opsional, ekspor Google Form).

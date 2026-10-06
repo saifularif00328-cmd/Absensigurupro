@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CalendarClock, Camera, CheckCircle2, Fingerprint, LogOut, MapPin, QrCode, Send, WifiOff } from 'lucide-react';
+import { CalendarClock, CheckCircle2, Fingerprint, LogOut, MapPin, ScanFace, Send, ShieldCheck, WifiOff } from 'lucide-react';
 import { api, deviceId, enqueue, flushPending, pending } from './api.js';
-import { SelfieCapture } from './Camera.jsx';
-import QrScanner from './QrScanner.jsx';
+import FaceCapture from './face/FaceCapture.jsx';
+import { prefetchFaceModels } from './face/faceEngine.js';
 
 const getPosition = () =>
   new Promise((resolve, reject) =>
@@ -15,26 +15,25 @@ const fmt = (iso) => (iso ? new Date(iso).toLocaleTimeString('id-ID', { hour: '2
 export default function Guru() {
   const [today, setToday] = useState(null);
   const [msg, setMsg] = useState('');
-  const [qr, setQr] = useState('');
   const [queued, setQueued] = useState(pending().length);
   const [leaves, setLeaves] = useState([]);
-  const [requireSelfie, setRequireSelfie] = useState(false);
-  const [step, setStep] = useState(null);       // null | 'scan' | 'selfie'
-  const [proof, setProof] = useState(null);     // bukti utama (gps / qr) menunggu selfie
+  const [face, setFace] = useState({ enrolled: localStorage.getItem('face_enrolled') === '1', liveness: localStorage.getItem('face_liveness') !== '0' });
+  const [step, setStep] = useState(null);        // null | 'enroll' | 'verify'
+  const [pos, setPos] = useState(null);          // lokasi yang sudah diambil sebelum verifikasi wajah
   const [clock, setClock] = useState(new Date());
-  useEffect(() => { const id = setInterval(() => setClock(new Date()), 1000); return () => clearInterval(id); }, []);
   const [lf, setLf] = useState({ type: 'izin', start_date: '', end_date: '', reason: '' });
+
+  useEffect(() => { const id = setInterval(() => setClock(new Date()), 1000); return () => clearInterval(id); }, []);
 
   const load = useCallback(async () => {
     try {
       setToday((await api('/attendance/today')).attendance);
       setLeaves(await api('/leaves'));
-      const s = await api('/school');
-      setRequireSelfie(!!s?.require_selfie);
-      localStorage.setItem('require_selfie', s?.require_selfie ? '1' : '0'); // diingat untuk saat offline
-    } catch {
-      setRequireSelfie(localStorage.getItem('require_selfie') === '1');
-    }
+      const f = await api('/face/status');
+      setFace(f);
+      localStorage.setItem('face_enrolled', f.enrolled ? '1' : '0');   // diingat untuk saat offline
+      localStorage.setItem('face_liveness', f.liveness ? '1' : '0');
+    } catch { /* offline: pakai status tersimpan */ }
   }, []);
 
   const sync = useCallback(async () => {
@@ -49,45 +48,46 @@ export default function Guru() {
   useEffect(() => {
     load();
     sync();
+    prefetchFaceModels();
     window.addEventListener('online', sync);
     return () => window.removeEventListener('online', sync);
   }, [load, sync]);
 
-  // Kirim absen; offline hanya untuk GPS (QR harus online)
-  const submit = async (p, selfie) => {
+  // Langkah 1: lokasi. Langkah 2: wajah. Langkah 3: kirim (atau simpan lokal bila offline).
+  const startCheckIn = async () => {
+    setMsg('');
+    if (!face.enrolled) return setMsg('Daftarkan wajah Anda dulu (tombol di atas).');
+    try {
+      const p = await getPosition();
+      setPos({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy });
+      setStep('verify');
+    } catch (e) { setMsg(e.message); }
+  };
+
+  const submit = useCallback(async ({ selfie, descriptor }) => {
     setStep(null);
-    setProof(null);
-    const body = { ...p, device_id: deviceId(), ...(selfie && { selfie }) };
+    const body = { method: 'selfie', ...pos, selfie, descriptor, device_id: deviceId() };
     try {
       setToday(await api('/attendance/check-in', { method: 'POST', body }));
       setMsg('Check-in berhasil');
     } catch (e) {
-      if (!e.status && p.method === 'gps') {
+      if (!e.status) {
         const ok = enqueue({ path: '/attendance/check-in', body: { ...body, client_time: new Date().toISOString() } });
         setQueued(pending().length);
         setMsg(ok ? 'Offline: absen disimpan di perangkat dan akan dikirim saat online' : 'Offline dan penyimpanan perangkat penuh. Sambungkan internet lalu coba lagi.');
       } else setMsg(e.message);
     }
-  };
+  }, [pos]);
 
-  // Bukti utama sudah ada -> minta selfie bila diwajibkan, kalau tidak langsung kirim
-  const withProof = (p) => {
-    if (requireSelfie) { setProof(p); setStep('selfie'); } else submit(p);
-  };
-
-  const checkInGps = async () => {
-    setMsg('');
-    try {
-      const pos = await getPosition();
-      withProof({ method: 'gps', lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
-    } catch (e) { setMsg(e.message); }
-  };
-
-  const onScanned = useCallback((token) => {
+  const enroll = useCallback(async (data) => {
     setStep(null);
-    setQr(token);
-    withProof({ method: 'qr', qr_token: token });
-  }, [requireSelfie]); // eslint-disable-line react-hooks/exhaustive-deps
+    try {
+      await api('/face/enroll', { method: 'POST', body: data });
+      setFace((f) => ({ ...f, enrolled: true }));
+      localStorage.setItem('face_enrolled', '1');
+      setMsg('Wajah berhasil didaftarkan. Sekarang Anda bisa absen.');
+    } catch (e) { setMsg(e.message); }
+  }, []);
 
   const checkOut = async () => {
     try { setToday(await api('/attendance/check-out', { method: 'POST', body: {} })); setMsg('Check-out berhasil'); }
@@ -105,15 +105,23 @@ export default function Guru() {
 
   return (
     <>
-      {step === 'scan' && <QrScanner onToken={onScanned} onCancel={() => setStep(null)} />}
-      {step === 'selfie' && <SelfieCapture onCancel={() => { setStep(null); setProof(null); }} onCapture={(img) => (img ? submit(proof, img) : setMsg('Gagal mengambil foto, coba lagi'))} />}
+      {step === 'verify' && <FaceCapture mode="verify" liveness={face.liveness} onDone={submit} onCancel={() => setStep(null)} />}
+      {step === 'enroll' && <FaceCapture mode="enroll" liveness={face.liveness} onDone={enroll} onCancel={() => setStep(null)} />}
+
+      {!face.enrolled && (
+        <section className="panel callout">
+          <h2><ScanFace size={20} /> Daftarkan wajah Anda</h2>
+          <p>Absen memakai selfie yang dicocokkan dengan wajah Anda. Daftarkan sekali (3 foto singkat) di tempat yang terang.</p>
+          <button onClick={() => { setMsg(''); setStep('enroll'); }}><ScanFace size={18} /> Daftarkan wajah sekarang</button>
+        </section>
+      )}
 
       <section className="panel">
         <h2><Fingerprint size={20} /> Absensi hari ini</h2>
         <div className="orbwrap">
           <div className="clock" aria-live="off">{clock.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</div>
           <div className="small">{clock.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
-          {!today?.check_in && <button className="orb" onClick={checkInGps} aria-label="Check-in (lokasi)"><MapPin /> Check-in<small>(lokasi)</small></button>}
+          {!today?.check_in && <button className="orb" onClick={startCheckIn} aria-label="Check-in dengan wajah"><ScanFace /> Check-in<small>(wajah)</small></button>}
           {today?.check_in && !today.check_out && <button className="orb done" onClick={checkOut} aria-label="Check-out"><LogOut /> Check-out</button>}
           {today?.check_in && today.check_out && <div className="orb done" style={{ animation: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><CheckCircle2 /> Selesai</div>}
           <div className="statusline">
@@ -121,20 +129,9 @@ export default function Guru() {
             <span className="tag">Masuk {fmt(today?.check_in)}</span>
             <span className="tag">Pulang {fmt(today?.check_out)}</span>
           </div>
+          {!today?.check_in && <p className="small"><MapPin size={14} style={{ verticalAlign: '-2px' }} /> Anda harus berada di area sekolah. <ShieldCheck size={14} style={{ verticalAlign: '-2px' }} /> Wajah dicocokkan otomatis.</p>}
         </div>
         {queued > 0 && <p className="warn"><WifiOff size={16} style={{ verticalAlign: '-3px' }} /> {queued} absen menunggu sinkron <button className="secondary" onClick={sync}>Kirim sekarang</button></p>}
-        {!today?.check_in && (
-          <>
-            {requireSelfie && <p className="warn"><Camera size={16} style={{ verticalAlign: '-3px' }} /> Sekolah mewajibkan foto selfie saat absen.</p>}
-            <div className="actions">
-              <button className="action secondary" onClick={() => setStep('scan')}><QrCode /> Scan QR dengan kamera</button>
-            </div>
-            <div className="row">
-              <input placeholder="Atau tempel kode QR" value={qr} onChange={(e) => setQr(e.target.value)} aria-label="Kode QR" />
-              <button className="secondary" onClick={() => (qr.trim() ? withProof({ method: 'qr', qr_token: qr.trim() }) : setMsg('Isi kode QR dulu'))}>Check-in QR</button>
-            </div>
-          </>
-        )}
         {msg && <p className="msg" role="status">{msg}</p>}
       </section>
 

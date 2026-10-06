@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarCheck, ClipboardCheck, GraduationCap, LayoutDashboard, LibraryBig, LogOut, Settings, Users } from 'lucide-react';
+import { CalendarCheck, ClipboardCheck, GraduationCap, KeyRound, LayoutDashboard, LibraryBig, LogOut, Settings, Users } from 'lucide-react';
 import { api } from '../api.js';
 import Logo from './Logo.jsx';
 
@@ -8,7 +8,7 @@ const ROLE = { admin: 'Admin', kepsek: 'Kepala Sekolah', guru: 'Guru' };
 const initials = (n) => n.split(/\s+/).slice(0, 2).map((x) => x[0]).join('').toUpperCase();
 
 // Bilah atas kaca + navigasi (pil di desktop, dock melayang di HP)
-export default function Shell({ user, tabs, cur, onTab, onLogout, children }) {
+export default function Shell({ user, tabs, cur, onTab, onLogout, onChangePassword, children }) {
   const [school, setSchool] = useState('');
   useEffect(() => { api('/school').then((s) => setSchool(s?.name ?? '')).catch(() => {}); }, []);
   return (
@@ -19,6 +19,7 @@ export default function Shell({ user, tabs, cur, onTab, onLogout, children }) {
         <div className="userchip">
           <span className="nm">{user.full_name}</span><span className="role">{ROLE[user.role]}</span>
           <span className="avatar" style={{ width: 34, height: 34, fontSize: 13 }}>{initials(user.full_name)}</span>
+          <button className="secondary" onClick={onChangePassword} aria-label="Ganti password" title="Ganti password"><KeyRound size={16} /></button>
           <button className="secondary" onClick={onLogout} aria-label="Keluar" title="Keluar"><LogOut size={16} /> <span className="nm">Keluar</span></button>
         </div>
       </header>

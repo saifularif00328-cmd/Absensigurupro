@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { School, BookOpen, Upload, Users } from 'lucide-react';
 import { api } from './api.js';
+import ImportBox from './ui/ImportBox.jsx';
 
 export default function Akademik() {
   const [classes, setClasses] = useState([]);
@@ -60,9 +61,13 @@ export default function Akademik() {
 
       <section className="panel">
         <h2><Upload size={20} /> Impor siswa</h2>
-        <p className="small">Satu baris per siswa: <code>NIS,Nama,Kelas</code> (dipisah koma / titik koma / tab). Kelas yang belum ada dibuat otomatis. Tempel dari Excel juga bisa.</p>
+        <ImportBox kind="siswa" onResult={() => load()} />
+        <details>
+          <summary>Atau tempel teks (NIS,Nama,Kelas)</summary>
+        <p className="small">Satu baris per siswa: <code>NIS,Nama,Kelas</code> (dipisah koma / titik koma / tab). Kelas yang belum ada dibuat otomatis.</p>
         <textarea rows={5} placeholder={'1001,Citra Dewi,7A\n1002,Dedi Pratama,7A'} value={csv} onChange={(e) => setCsv(e.target.value)} />
         <button disabled={!csv.trim()} onClick={importCsv}>Impor</button>
+        </details>
       </section>
 
       <section className="panel">

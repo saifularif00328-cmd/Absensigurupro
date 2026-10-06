@@ -352,3 +352,24 @@ body:has(.exam)::before, body:has(.exam)::after { animation: none; }
 
 .gradecard .tag { justify-self: start; }
 .panel > h2 + .inline, .panel > .inline:first-child { margin-top: 2px; }
+
+/* ---- Verifikasi wajah ---- */
+.facecap h2 { display: flex; align-items: center; gap: 10px; justify-content: center; margin: 0; }
+.faceview { position: relative; width: min(92vw, 420px); margin: 0 auto; }
+.faceview .preview { width: 100%; display: block; }
+.oval { position: absolute; inset: 8% 18%; border-radius: 50%; border: 3px dashed rgba(255, 255, 255, .55); pointer-events: none; transition: border-color .3s, box-shadow .3s; }
+.oval.challenge { border-color: var(--accent); box-shadow: 0 0 30px rgba(34, 211, 238, .5); }
+.oval.capturing, .oval.done { border-style: solid; border-color: var(--ok); box-shadow: 0 0 36px rgba(52, 211, 153, .65); }
+.facestatus { margin: 0; font-weight: 700; min-height: 1.5em; }
+.callout { border-color: rgba(251, 191, 36, .5); background: linear-gradient(150deg, rgba(251, 191, 36, .16), var(--glass-b)); }
+.callout p { margin: 0; color: var(--text); }
+
+/* ---- Impor Excel, kredensial, daftar guru ---- */
+.importbox { display: grid; gap: 10px; padding: 12px; border: 1px dashed var(--line-strong); border-radius: 14px; background: rgba(0, 0, 0, .18); }
+.importbox ul { margin: 6px 0 0; padding-left: 18px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin: 12px 0; }
+.credcard { border: 1px solid #94a3b8; border-radius: 10px; padding: 10px 12px; display: grid; gap: 3px; font-size: 13.5px; break-inside: avoid; color: #000; }
+.credcard code { background: #eef2ff; padding: 1px 6px; border-radius: 5px; color: #111; }
+.warnbox { background: #fef3c7; color: #78350f; padding: 10px 12px; border-radius: 10px; }
+.actionrow { display: flex; gap: 6px; flex-wrap: wrap; } .actionrow button { min-height: 34px; padding: 5px 10px; font-size: 12.5px; border-radius: 10px; box-shadow: 0 1px 0 rgba(255,255,255,.2) inset, 0 2px 0 rgba(0,0,0,.5); }
+.modal.light code { color: #111; }

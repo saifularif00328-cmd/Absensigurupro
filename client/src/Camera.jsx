@@ -14,7 +14,7 @@ export function useCamera(facing = 'user') {
         return setError('Kamera tidak tersedia (butuh HTTPS atau localhost)');
       }
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing }, audio: false });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
         if (cancelled) return stream.getTracks().forEach((t) => t.stop());
         streamRef.current = stream;
         const v = videoRef.current;
@@ -32,8 +32,8 @@ export function useCamera(facing = 'user') {
     };
   }, [facing]);
 
-  // Ambil frame saat ini sebagai JPEG data URL (maks sisi panjang 640 px)
-  const snapshot = useCallback((maxSide = 640, quality = 0.7) => {
+  // Ambil frame saat ini sebagai kanvas (dan JPEG bila diminta; sisi terpanjang maks 640 px)
+  const grab = useCallback((maxSide = 640) => {
     const v = videoRef.current;
     if (!v || !v.videoWidth) return null;
     const k = Math.min(1, maxSide / Math.max(v.videoWidth, v.videoHeight));
@@ -41,22 +41,8 @@ export function useCamera(facing = 'user') {
     c.width = Math.round(v.videoWidth * k);
     c.height = Math.round(v.videoHeight * k);
     c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
-    return c.toDataURL('image/jpeg', quality);
+    return c;
   }, []);
 
-  return { videoRef, error, ready, snapshot };
-}
-
-export function SelfieCapture({ onCapture, onCancel }) {
-  const { videoRef, error, ready, snapshot } = useCamera('user');
-  return (
-    <div className="modal">
-      <p>Ambil foto selfie untuk absen</p>
-      {error ? <p className="err">{error}</p> : <video ref={videoRef} muted className="preview mirror" />}
-      <div className="row">
-        <button disabled={!ready} onClick={() => onCapture(snapshot())}>Ambil foto</button>
-        <button className="secondary" onClick={onCancel}>Batal</button>
-      </div>
-    </div>
-  );
+  return { videoRef, error, ready, grab };
 }

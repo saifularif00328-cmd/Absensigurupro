@@ -43,6 +43,13 @@ const ADDED_COLUMNS = [
   ['exams', 'term', "TEXT NOT NULL DEFAULT ''"],
   ['exam_sessions', 'nonce', 'TEXT'],
   ['exam_sessions', 'submit_reason', 'TEXT'],
+  ['users', 'face_descriptors', 'TEXT'],
+  ['users', 'face_photo', 'TEXT'],
+  ['users', 'face_enrolled_at', 'TEXT'],
+  ['users', 'must_change_password', 'INTEGER NOT NULL DEFAULT 0'],
+  ['attendance', 'face_distance', 'REAL'],
+  ['school', 'face_liveness', 'INTEGER NOT NULL DEFAULT 1'],
+  ['school', 'face_threshold', 'REAL NOT NULL DEFAULT 0.55'],
 ];
 
 function migrate(db) {

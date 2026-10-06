@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireRole } from './auth.js';
 import { isUniqueViolation } from './db.js';
 import { randomCode } from './util.js';
+import { importStudents } from './importer.js';
 
 const fail = (res, code, error, extra = {}) => res.status(code).json({ error, ...extra });
 
@@ -59,25 +60,14 @@ export function academicRoutes(db, auth) {
   r.post('/students/import', auth, admin, (req, res) => {
     const d = z.object({ csv: z.string().min(1).max(500_000), default_class_id: z.number().int().optional() }).safeParse(req.body);
     if (!d.success) return fail(res, 400, 'Data tidak valid');
-    const result = { created: 0, updated: 0, errors: [] };
-    const findClass = db.prepare('SELECT id FROM classes WHERE name=?');
-    const newClass = db.prepare('INSERT INTO classes (name) VALUES (?)');
-    const find = db.prepare('SELECT id FROM students WHERE nis=?');
-    const ins = db.prepare('INSERT INTO students (nis,name,class_id,access_code) VALUES (?,?,?,?)');
-    const upd = db.prepare('UPDATE students SET name=?, class_id=? WHERE id=?');
-    db.transaction(() => {
-      d.data.csv.split(/\r?\n/).forEach((line, i) => {
-        if (!line.trim()) return;
-        const [nis, name, klass] = line.split(/[,;\t]/).map((x) => x.trim().replace(/^"|"$/g, ''));
-        if (i === 0 && /^nis$/i.test(nis)) return;
-        if (!nis || !name) return result.errors.push({ line: i + 1, error: 'NIS dan nama wajib' });
-        let cid = d.data.default_class_id ?? null;
-        if (klass) cid = (findClass.get(klass) ?? { id: newClass.run(klass).lastInsertRowid }).id;
-        const ex = find.get(nis);
-        if (ex) { upd.run(name, cid, ex.id); result.updated++; } else { ins.run(nis, name, cid, randomCode(6)); result.created++; }
-      });
-    })();
-    res.json(result);
+    const rows = [];
+    d.data.csv.split(/\r?\n/).forEach((line, i) => {
+      if (!line.trim()) return;
+      const [nis, nama, kelas] = line.split(/[,;\t]/).map((x) => x.trim().replace(/^"|"$/g, ''));
+      if (i === 0 && /^nis$/i.test(nis)) return;
+      rows.push({ line: i + 1, nis: nis ?? '', nama: nama ?? '', kelas: kelas ?? '' });
+    });
+    res.json(importStudents(db, rows, d.data.default_class_id ?? null));
   });
 
   r.post('/students/:id/reset-code', auth, admin, (req, res) => {

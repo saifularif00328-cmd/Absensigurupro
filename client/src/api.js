@@ -76,3 +76,28 @@ export async function streamEvents(path, onEvent, signal) {
     for (const c of parts) if (c.startsWith('data: ')) onEvent(JSON.parse(c.slice(6)));
   }
 }
+
+// Unggah berkas biner (mis. .xlsx) apa adanya
+export async function uploadFile(path, file) {
+  const res = await fetch('/api' + path, {
+    method: 'POST',
+    headers: { 'content-type': 'application/octet-stream', authorization: `Bearer ${localStorage.getItem('token')}` },
+    body: file,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.error || 'Unggahan gagal'), { status: res.status });
+  return data;
+}
+
+// Unduh berkas hasil POST (mis. lembar kredensial)
+export async function downloadPost(path, body, filename) {
+  const res = await fetch('/api' + path, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${localStorage.getItem('token')}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error('Unduhan gagal');
+  const url = URL.createObjectURL(await res.blob());
+  Object.assign(document.createElement('a'), { href: url, download: filename }).click();
+  URL.revokeObjectURL(url);
+}

@@ -4,10 +4,11 @@
   "type": "module",
   "version": "0.1.0",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/copy-models.mjs && vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test test/qr.test.js"
+    "test": "node --test test/liveness.test.js",
+    "prebuild": "node scripts/copy-models.mjs"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.2",
@@ -15,9 +16,8 @@
   },
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
-    "jsqr": "^1.4.0",
+    "@vladmandic/face-api": "^1.7.15",
     "lucide-react": "^1.52.0",
-    "qrcode": "^1.5.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   }
