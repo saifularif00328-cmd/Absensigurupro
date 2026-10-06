@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { GraduationCap } from 'lucide-react';
 import { api, download } from './api.js';
 
 function RaporPrint({ studentId, term, onClose }) {
@@ -54,10 +55,10 @@ export default function Nilai({ user }) {
 
   return (
     <section className="panel">
-      <h2>Nilai & rapor {data ? `— ${data.term}` : ''}</h2>
+      <h2><GraduationCap size={20} /> Nilai & rapor {data ? `— ${data.term}` : ''}</h2>
       <div className="inline">
-        <select value={classId} onChange={(e) => setClassId(e.target.value)}><option value="">Semua kelas</option>{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-        <input placeholder="Semester (kosong = berjalan)" value={term} onChange={(e) => setTerm(e.target.value)} />
+        <select aria-label="Kelas" value={classId} onChange={(e) => setClassId(e.target.value)}><option value="">Semua kelas</option>{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+        <input aria-label="Semester" placeholder="Semester (kosong = berjalan)" value={term} onChange={(e) => setTerm(e.target.value)} />
         <button className="secondary" onClick={() => download(`/reports/rapor.xlsx?${q}`, 'nilai.xlsx').catch((e) => setErr(e.message))}>Unduh Excel</button>
       </div>
       <p className="small">Nilai ujian masuk otomatis setelah siswa selesai dan uraian dikoreksi. Nilai akhir = rata-rata tiap jenis × bobot mapel.</p>
@@ -75,7 +76,7 @@ export default function Nilai({ user }) {
                   {subjects.map((s) => <td key={s}>{by.get(s) ?? '-'}</td>)}
                   <td><b>{r.average ?? '-'}</b></td>
                   {['sakit', 'izin', 'alpa'].map((f) => (
-                    <td key={f}><input type="number" min="0" style={{ width: 52 }} defaultValue={r.absence[f]} disabled={user.role === 'kepsek'} onBlur={(e) => Number(e.target.value) !== r.absence[f] && saveAbsence(r, f, e.target.value)} /></td>
+                    <td key={f}><input type="number" min="0" style={{ width: 52 }} aria-label={`${{ sakit: 'Sakit', izin: 'Izin', alpa: 'Alpa' }[f]} ${r.student.name}`} defaultValue={r.absence[f]} disabled={user.role === 'kepsek'} onBlur={(e) => Number(e.target.value) !== r.absence[f] && saveAbsence(r, f, e.target.value)} /></td>
                   ))}
                   <td><button className="secondary" onClick={() => setPrint(r.student.id)}>Rapor</button></td>
                 </tr>

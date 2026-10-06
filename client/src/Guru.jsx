@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { CalendarClock, Camera, CheckCircle2, Fingerprint, LogOut, MapPin, QrCode, Send, WifiOff } from 'lucide-react';
 import { api, deviceId, enqueue, flushPending, pending } from './api.js';
 import { SelfieCapture } from './Camera.jsx';
 import QrScanner from './QrScanner.jsx';
@@ -9,7 +10,7 @@ const getPosition = () =>
       ? navigator.geolocation.getCurrentPosition(resolve, () => reject(new Error('Izin lokasi ditolak / lokasi tidak tersedia')), { enableHighAccuracy: true, timeout: 15000 })
       : reject(new Error('Perangkat tidak mendukung lokasi')));
 
-const fmt = (iso) => (iso ? new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-');
+const fmt = (iso) => (iso ? new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '—');
 
 export default function Guru() {
   const [today, setToday] = useState(null);
@@ -20,6 +21,8 @@ export default function Guru() {
   const [requireSelfie, setRequireSelfie] = useState(false);
   const [step, setStep] = useState(null);       // null | 'scan' | 'selfie'
   const [proof, setProof] = useState(null);     // bukti utama (gps / qr) menunggu selfie
+  const [clock, setClock] = useState(new Date());
+  useEffect(() => { const id = setInterval(() => setClock(new Date()), 1000); return () => clearInterval(id); }, []);
   const [lf, setLf] = useState({ type: 'izin', start_date: '', end_date: '', reason: '' });
 
   const load = useCallback(async () => {
@@ -106,36 +109,47 @@ export default function Guru() {
       {step === 'selfie' && <SelfieCapture onCancel={() => { setStep(null); setProof(null); }} onCapture={(img) => (img ? submit(proof, img) : setMsg('Gagal mengambil foto, coba lagi'))} />}
 
       <section className="panel">
-        <h2>Absensi hari ini</h2>
-        <p>Status: <b>{today?.status ?? 'belum absen'}</b> · Masuk {fmt(today?.check_in)} · Pulang {fmt(today?.check_out)}</p>
-        {queued > 0 && <p className="warn">{queued} absen menunggu sinkron <button onClick={sync}>Kirim sekarang</button></p>}
+        <h2><Fingerprint size={20} /> Absensi hari ini</h2>
+        <div className="orbwrap">
+          <div className="clock" aria-live="off">{clock.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</div>
+          <div className="small">{clock.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+          {!today?.check_in && <button className="orb" onClick={checkInGps} aria-label="Check-in (lokasi)"><MapPin /> Check-in<small>(lokasi)</small></button>}
+          {today?.check_in && !today.check_out && <button className="orb done" onClick={checkOut} aria-label="Check-out"><LogOut /> Check-out</button>}
+          {today?.check_in && today.check_out && <div className="orb done" style={{ animation: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><CheckCircle2 /> Selesai</div>}
+          <div className="statusline">
+            <span className={`tag ${today?.status === 'hadir' ? 'ok' : today?.status === 'terlambat' ? 'bad' : ''}`}>Status: <b>{today?.status ?? 'belum absen'}</b></span>
+            <span className="tag">Masuk {fmt(today?.check_in)}</span>
+            <span className="tag">Pulang {fmt(today?.check_out)}</span>
+          </div>
+        </div>
+        {queued > 0 && <p className="warn"><WifiOff size={16} style={{ verticalAlign: '-3px' }} /> {queued} absen menunggu sinkron <button className="secondary" onClick={sync}>Kirim sekarang</button></p>}
         {!today?.check_in && (
           <>
-            {requireSelfie && <p className="warn">Sekolah mewajibkan foto selfie saat absen.</p>}
-            <button onClick={checkInGps}>Check-in (lokasi)</button>
-            <button onClick={() => setStep('scan')}>Scan QR dengan kamera</button>
+            {requireSelfie && <p className="warn"><Camera size={16} style={{ verticalAlign: '-3px' }} /> Sekolah mewajibkan foto selfie saat absen.</p>}
+            <div className="actions">
+              <button className="action secondary" onClick={() => setStep('scan')}><QrCode /> Scan QR dengan kamera</button>
+            </div>
             <div className="row">
-              <input placeholder="Atau tempel kode QR" value={qr} onChange={(e) => setQr(e.target.value)} />
-              <button onClick={() => (qr.trim() ? withProof({ method: 'qr', qr_token: qr.trim() }) : setMsg('Isi kode QR dulu'))}>Check-in QR</button>
+              <input placeholder="Atau tempel kode QR" value={qr} onChange={(e) => setQr(e.target.value)} aria-label="Kode QR" />
+              <button className="secondary" onClick={() => (qr.trim() ? withProof({ method: 'qr', qr_token: qr.trim() }) : setMsg('Isi kode QR dulu'))}>Check-in QR</button>
             </div>
           </>
         )}
-        {today?.check_in && !today.check_out && <button onClick={checkOut}>Check-out</button>}
-        {msg && <p className="msg">{msg}</p>}
+        {msg && <p className="msg" role="status">{msg}</p>}
       </section>
 
       <section className="panel">
-        <h2>Ajukan izin / sakit / cuti</h2>
+        <h2><CalendarClock size={20} /> Ajukan izin / sakit / cuti</h2>
         <form onSubmit={submitLeave} className="grid">
-          <select value={lf.type} onChange={(e) => setLf({ ...lf, type: e.target.value })}>
+          <select aria-label="Jenis" value={lf.type} onChange={(e) => setLf({ ...lf, type: e.target.value })}>
             {['izin', 'sakit', 'cuti', 'dinas'].map((t) => <option key={t}>{t}</option>)}
           </select>
-          <input type="date" required value={lf.start_date} onChange={(e) => setLf({ ...lf, start_date: e.target.value })} />
-          <input type="date" required value={lf.end_date} onChange={(e) => setLf({ ...lf, end_date: e.target.value })} />
+          <input type="date" required aria-label="Tanggal mulai" value={lf.start_date} onChange={(e) => setLf({ ...lf, start_date: e.target.value })} />
+          <input type="date" required aria-label="Tanggal selesai" value={lf.end_date} onChange={(e) => setLf({ ...lf, end_date: e.target.value })} />
           <input placeholder="Alasan" value={lf.reason} onChange={(e) => setLf({ ...lf, reason: e.target.value })} />
-          <button>Kirim</button>
+          <button><Send size={16} /> Kirim</button>
         </form>
-        <ul>{leaves.map((l) => <li key={l.id}>{l.type} {l.start_date} s.d. {l.end_date} — <b>{l.status}</b></li>)}</ul>
+        <div className="grid">{leaves.map((l) => <div key={l.id} className="inline"><span className="tag">{l.type}</span><span className="small">{l.start_date} s.d. {l.end_date}</span><span className={`tag ${l.status === 'approved' ? 'ok' : l.status === 'rejected' ? 'bad' : 'run'}`}>{l.status}</span></div>)}</div>
       </section>
     </>
   );

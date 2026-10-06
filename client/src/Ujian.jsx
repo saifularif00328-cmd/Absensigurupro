@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ClipboardCheck } from 'lucide-react';
 import { api, download, streamEvents } from './api.js';
 
 const kindLabel = { harian: 'Ulangan harian', uts: 'UTS', uas: 'UAS' };
@@ -144,11 +145,11 @@ function Create({ onDone, onCancel }) {
     <section className="panel">
       <h2>Buat ujian</h2>
       <form onSubmit={submit} className="grid">
-        <input required placeholder="Judul ujian" value={f.title} onChange={set('title')} />
+        <input required aria-label="Judul ujian" placeholder="Judul ujian" value={f.title} onChange={set('title')} />
         <div className="inline">
-          <select required value={f.subject_id} onChange={set('subject_id')}><option value="">— mapel —</option>{subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
-          <select value={f.class_id} onChange={set('class_id')}><option value="">Semua kelas</option>{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-          <select value={f.kind} onChange={set('kind')}>{Object.entries(kindLabel).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+          <select required aria-label="Mata pelajaran" value={f.subject_id} onChange={set('subject_id')}><option value="">— mapel —</option>{subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
+          <select aria-label="Kelas" value={f.class_id} onChange={set('class_id')}><option value="">Semua kelas</option>{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          <select aria-label="Jenis ujian" value={f.kind} onChange={set('kind')}>{Object.entries(kindLabel).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
         </div>
         <div className="inline">
           <label>Durasi (menit) <input type="number" min="1" style={{ width: 80 }} value={f.duration_min} onChange={set('duration_min')} /></label>
@@ -195,7 +196,7 @@ export default function Ujian({ role }) {
   };
   return (
     <section className="panel">
-      <div className="inline"><h2>Ujian</h2>{canEdit && <button onClick={() => setView({ name: 'create' })}>+ Buat ujian</button>}</div>
+      <div className="inline"><h2><ClipboardCheck size={20} /> Ujian</h2>{canEdit && <button onClick={() => setView({ name: 'create' })}>+ Buat ujian</button>}</div>
       {err && <p className="err">{err}</p>}
       {list.length === 0 && <p>Belum ada ujian.</p>}
       {list.map((e) => (

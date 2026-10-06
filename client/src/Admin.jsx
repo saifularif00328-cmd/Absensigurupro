@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Settings, CalendarOff, Users } from 'lucide-react';
 import { api } from './api.js';
 
 const EMPTY = { name: '', address: '', lat: '', lng: '', geofence_radius_m: 100, work_start: '07:00', work_end: '14:00', late_tolerance_min: 10, require_selfie: false, current_term: '' };
@@ -7,14 +8,15 @@ const num = (v) => (v === '' || v == null ? null : Number(v));
 function SchoolSettings({ onError }) {
   const [f, setF] = useState(EMPTY);
   const [saved, setSaved] = useState('');
+  const touched = useRef(new Set()); // kolom yang sudah diubah pengguna tidak ditimpa saat data awal baru tiba
   useEffect(() => {
-    api('/school').then((s) => s && setF({ ...EMPTY, ...s, lat: s.lat ?? '', lng: s.lng ?? '', require_selfie: !!s.require_selfie })).catch((e) => onError(e.message));
+    api('/school').then((s) => s && setF((prev) => ({ ...EMPTY, ...s, lat: s.lat ?? '', lng: s.lng ?? '', require_selfie: !!s.require_selfie, ...Object.fromEntries([...touched.current].map((k) => [k, prev[k]])) }))).catch((e) => onError(e.message));
   }, [onError]);
-  const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
+  const set = (k) => (e) => { touched.current.add(k); setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }); };
 
   const useMyLocation = () =>
     navigator.geolocation.getCurrentPosition(
-      (p) => setF((x) => ({ ...x, lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6) })),
+      (p) => { touched.current.add('lat'); touched.current.add('lng'); setF((x) => ({ ...x, lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6) })); },
       () => onError('Izin lokasi ditolak'),
       { enableHighAccuracy: true },
     );
@@ -37,7 +39,7 @@ function SchoolSettings({ onError }) {
 
   return (
     <section className="panel">
-      <h2>Pengaturan sekolah</h2>
+      <h2><Settings size={20} /> Pengaturan sekolah</h2>
       <form onSubmit={save} className="grid">
         <input placeholder="Nama sekolah" required value={f.name} onChange={set('name')} />
         <input placeholder="Alamat" value={f.address} onChange={set('address')} />
@@ -77,9 +79,9 @@ function Holidays({ onError }) {
 
   return (
     <section className="panel">
-      <h2>Hari libur</h2>
+      <h2><CalendarOff size={20} /> Hari libur</h2>
       <form onSubmit={add} className="inline">
-        <input type="date" required value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
+        <input type="date" required aria-label="Tanggal libur" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
         <input placeholder="Nama hari libur" required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
         <button>Tambah</button>
       </form>
@@ -118,7 +120,7 @@ function Teachers({ onError }) {
 
   return (
     <section className="panel">
-      <h2>Guru</h2>
+      <h2><Users size={20} /> Guru</h2>
       <form onSubmit={add} className="inline">
         <input placeholder="Nama lengkap" required value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} />
         <input placeholder="NIP (opsional)" value={f.nip} onChange={(e) => setF({ ...f, nip: e.target.value })} />

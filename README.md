@@ -33,4 +33,5 @@ Env: `JWT_SECRET` (wajib di production), `DB_FILE`, `PORT`, `ADMIN_PASSWORD`.
   - Nilai & rapor: rata-rata per jenis x bobot mapel (bobot jenis yang belum ada dibagi ulang), rekap S/I/A oleh admin/wali kelas, cetak rapor, ekspor Excel.
   - Cetak soal ke Word (.docx): kop sekolah, isian nama/absen/tanggal, paket A/B, 1-2 kolom, kunci jawaban, satu naskah per siswa.
 - Semester berjalan diatur di Pengaturan sekolah (kolom `current_term`; kosong = dihitung dari tanggal).
+- **Tampilan "Aurora Glass":** tema gelap dengan kartu kaca, tombol 3D, kartu miring mengikuti kursor, dock menu melayang di HP. Font dan ikon dibundel (jalan tanpa internet). Hormati `prefers-reduced-motion`. Lolos pemeriksaan aksesibilitas otomatis (axe, WCAG A/AA) di 12 layar utama.
 - Berikutnya: Fase 3 (APK kiosk: anti split-screen, blokir notifikasi, deteksi mock location), Fase 4 (pembuat soal AI opsional, ekspor Google Form).

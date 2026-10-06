@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { School, BookOpen, Upload, Users } from 'lucide-react';
 import { api } from './api.js';
 
 export default function Akademik() {
@@ -39,7 +40,7 @@ export default function Akademik() {
       {err && <p className="err">{err}</p>}
       {msg && <p className="msg">{msg}</p>}
       <section className="panel">
-        <h2>Kelas</h2>
+        <h2><School size={20} /> Kelas</h2>
         <form className="inline" onSubmit={(e) => { e.preventDefault(); run(async () => { await api('/classes', { method: 'POST', body: { name: className } }); setClassName(''); }); }}>
           <input placeholder="Nama kelas, mis. 7A" required value={className} onChange={(e) => setClassName(e.target.value)} /><button>Tambah</button>
         </form>
@@ -47,7 +48,7 @@ export default function Akademik() {
       </section>
 
       <section className="panel">
-        <h2>Mata pelajaran & bobot nilai</h2>
+        <h2><BookOpen size={20} /> Mata pelajaran & bobot nilai</h2>
         <form className="inline" onSubmit={(e) => { e.preventDefault(); run(async () => { await api('/subjects', { method: 'POST', body: { name: subjectName } }); setSubjectName(''); }); }}>
           <input placeholder="Nama mapel" required value={subjectName} onChange={(e) => setSubjectName(e.target.value)} /><button>Tambah</button>
         </form>
@@ -58,15 +59,15 @@ export default function Akademik() {
       </section>
 
       <section className="panel">
-        <h2>Impor siswa</h2>
+        <h2><Upload size={20} /> Impor siswa</h2>
         <p className="small">Satu baris per siswa: <code>NIS,Nama,Kelas</code> (dipisah koma / titik koma / tab). Kelas yang belum ada dibuat otomatis. Tempel dari Excel juga bisa.</p>
         <textarea rows={5} placeholder={'1001,Citra Dewi,7A\n1002,Dedi Pratama,7A'} value={csv} onChange={(e) => setCsv(e.target.value)} />
         <button disabled={!csv.trim()} onClick={importCsv}>Impor</button>
       </section>
 
       <section className="panel">
-        <h2>Siswa ({students.length})</h2>
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}><option value="">Semua kelas</option>{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+        <h2><Users size={20} /> Siswa ({students.length})</h2>
+        <select aria-label="Filter kelas" value={filter} onChange={(e) => setFilter(e.target.value)}><option value="">Semua kelas</option>{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
         <table>
           <thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Kode siswa</th><th /></tr></thead>
           <tbody>
@@ -88,7 +89,7 @@ function WeightRow({ s, onSave }) {
   return (
     <tr>
       <td>{s.name}</td>
-      {['harian', 'uts', 'uas'].map((k) => <td key={k}><input type="number" min="0" max="100" style={{ width: 64 }} value={w[k]} onChange={num(k)} /></td>)}
+      {['harian', 'uts', 'uas'].map((k) => <td key={k}><input type="number" min="0" max="100" style={{ width: 64 }} aria-label={`Bobot ${k} ${s.name} (%)`} value={w[k]} onChange={num(k)} /></td>)}
       <td><button disabled={sum !== 100} title={sum !== 100 ? `Jumlah ${sum}%, harus 100%` : ''} onClick={() => onSave(s, { harian: w.harian / 100, uts: w.uts / 100, uas: w.uas / 100 })}>Simpan</button></td>
     </tr>
   );

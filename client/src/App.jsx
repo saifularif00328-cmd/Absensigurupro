@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
+import Shell from './ui/Shell.jsx';
+import Login from './Login.jsx';
 import Guru from './Guru.jsx';
 import Staff from './Staff.jsx';
 import Admin from './Admin.jsx';
@@ -15,39 +17,17 @@ const TABS = {
   kepsek: [['dasbor', 'Dasbor'], ['ujian', 'Ujian'], ['nilai', 'Nilai']],
 };
 
-function Login({ onDone }) {
-  const [f, setF] = useState({ username: '', password: '' });
-  const [err, setErr] = useState('');
-  const submit = async (e) => {
-    e.preventDefault();
-    try {
-      const r = await api('/auth/login', { method: 'POST', body: f });
-      localStorage.setItem('token', r.token);
-      onDone(r.user);
-    } catch (e2) {
-      setErr(e2.message);
-    }
-  };
-  return (
-    <form className="card" onSubmit={submit}>
-      <h1>Absensi Guru Pro</h1>
-      <input placeholder="Username" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} />
-      <input type="password" placeholder="Password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
-      {err && <p className="err">{err}</p>}
-      <button>Masuk</button>
-      <a href="#/ujian">Saya siswa — masuk ujian</a>
-    </form>
-  );
-}
-
 export default function App() {
   const [hash, setHash] = useState(location.hash);
-  useEffect(() => { const h = () => setHash(location.hash); window.addEventListener('hashchange', h); return () => window.removeEventListener('hashchange', h); }, []);
-  if (hash.startsWith('#/ujian')) return <Siswa />;
-  return <Staff2 />;
+  useEffect(() => {
+    const h = () => setHash(location.hash);
+    window.addEventListener('hashchange', h);
+    return () => window.removeEventListener('hashchange', h);
+  }, []);
+  return hash.startsWith('#/ujian') ? <Siswa /> : <StaffApp />;
 }
 
-function Staff2() {
+function StaffApp() {
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState(null);
@@ -58,15 +38,9 @@ function Staff2() {
   if (!user) return <Login onDone={setUser} />;
   const tabs = TABS[user.role];
   const cur = tab ?? tabs[0][0];
+  const logout = () => { localStorage.removeItem('token'); setUser(null); setTab(null); };
   return (
-    <main className="page">
-      <header>
-        <h1>Halo, {user.full_name} <small>({user.role})</small></h1>
-        <button onClick={() => { localStorage.removeItem('token'); setUser(null); }}>Keluar</button>
-      </header>
-      <nav className="tabs">
-        {tabs.map(([k, label]) => <button key={k} className={cur === k ? 'on' : ''} onClick={() => setTab(k)}>{label}</button>)}
-      </nav>
+    <Shell user={user} tabs={tabs} cur={cur} onTab={setTab} onLogout={logout}>
       {cur === 'absensi' && <Guru />}
       {cur === 'dasbor' && <Staff user={user} />}
       {cur === 'pengaturan' && <Admin />}
@@ -74,6 +48,6 @@ function Staff2() {
       {cur === 'soal' && <Soal />}
       {cur === 'ujian' && <Ujian role={user.role} />}
       {cur === 'nilai' && <Nilai user={user} />}
-    </main>
+    </Shell>
   );
 }

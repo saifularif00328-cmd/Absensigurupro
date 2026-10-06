@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { LibraryBig, PlusCircle } from 'lucide-react';
 import { api } from './api.js';
 
 const TYPES = { pg: 'Pilihan ganda', bs: 'Benar/Salah', isian: 'Isian singkat', uraian: 'Uraian' };
@@ -57,19 +58,19 @@ export default function Soal({ readOnly = false }) {
       {msg && <p className="msg">{msg}</p>}
       {!readOnly && (
         <section className="panel">
-          <h2>{f.id ? `Ubah soal #${f.id}` : 'Tambah soal'}</h2>
+          <h2><PlusCircle size={20} /> {f.id ? `Ubah soal #${f.id}` : 'Tambah soal'}</h2>
           <form onSubmit={save} className="grid">
             <div className="inline">
-              <select value={f.type} onChange={(e) => setF({ ...f, type: e.target.value, points: e.target.value === 'uraian' ? 5 : 1 })} disabled={!!f.id}>
+              <select aria-label="Jenis soal" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value, points: e.target.value === 'uraian' ? 5 : 1 })} disabled={!!f.id}>
                 {Object.entries(TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
-              <select value={f.subject_id} onChange={(e) => setF({ ...f, subject_id: e.target.value })}>
+              <select aria-label="Mata pelajaran" value={f.subject_id} onChange={(e) => setF({ ...f, subject_id: e.target.value })}>
                 <option value="">— mapel —</option>
                 {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
               <label>Skor <input type="number" min="0.5" step="0.5" style={{ width: 70 }} value={f.points} onChange={(e) => setF({ ...f, points: e.target.value })} /></label>
             </div>
-            <textarea required rows={3} placeholder="Teks soal" value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} />
+            <textarea required rows={3} aria-label="Teks soal" placeholder="Teks soal" value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} />
             {f.type === 'pg' && (
               <>
                 {f.options.map((o, i) => (
@@ -100,8 +101,8 @@ export default function Soal({ readOnly = false }) {
         </section>
       )}
       <section className="panel">
-        <h2>Bank soal ({list.length})</h2>
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+        <h2><LibraryBig size={20} /> Bank soal ({list.length})</h2>
+        <select aria-label="Filter mapel" value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="">Semua mapel</option>
           {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
